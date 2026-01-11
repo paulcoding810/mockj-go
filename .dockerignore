@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Data
+data/
+*.db
+
+# Temporary
+tmp/
+temp/
+
+# Build artifacts
+mockj-go
+main
+
+# Test coverage
+coverage.out
+coverage.html
