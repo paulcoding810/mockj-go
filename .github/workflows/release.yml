@@ -78,7 +78,7 @@ jobs:
     needs: build-and-push
     uses: ./.github/workflows/test-docker.yml
     with:
-      image_ref: ghcr.io/${{ github.repository_owner }}/mockj:${{ needs.create-release.outputs.version }}
+      image_ref: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
       version: ${{ needs.create-release.outputs.version }}
 
   update-docs:
@@ -115,7 +115,7 @@ jobs:
         run: |
           echo "🚀 Deploying ${{ needs.create-release.outputs.version }} to staging..."
           echo "Staging URL: https://staging.your-domain.com"
-          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj:${{ needs.create-release.outputs.version }}"
+          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}"
 
   announce:
     needs: [create-release, build-and-push, test-release]
@@ -151,7 +151,7 @@ jobs:
 
             **Docker:**
             \`\`\`bash
-            docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj:${{ needs.create-release.outputs.version }}
+            docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
             \`\`\`
 
             **Docker Compose:**
@@ -159,7 +159,7 @@ jobs:
             version: '3.8'
             services:
               mockj-go:
-                image: ghcr.io/${{ github.repository_owner }}/mockj:${{ needs.create-release.outputs.version }}
+                image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
                 ports:
                   - "8080:8080"
                 volumes:
