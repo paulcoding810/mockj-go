@@ -4,12 +4,13 @@ on:
   release:
     types: [created]
   push:
-    branches: [ci]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
         description: "Version tag (optional)"
         required: false
+        type: string
         default: "nightly"
 
 jobs:

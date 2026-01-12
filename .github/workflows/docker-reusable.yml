@@ -6,37 +6,46 @@ on:
       image_name:
         description: 'Name of the Docker image'
         required: true
+        type: string
       docker_context:
         description: 'Docker build context'
         required: false
+        type: string
         default: '.'
       dockerfile:
         description: 'Dockerfile path'
         required: false
+        type: string
         default: 'docker/Dockerfile'
       target:
         description: 'Docker build target'
         required: false
+        type: string
         default: 'web'
       version:
         description: 'Version tag'
         required: false
+        type: string
         default: 'nightly'
       registry:
         description: 'Container registry'
         required: false
+        type: string
         default: 'ghcr.io'
       push:
         description: 'Whether to push the image'
         required: false
+        type: boolean
         default: true
       cache:
         description: 'Whether to use build cache'
         required: false
+        type: boolean
         default: true
       platforms:
         description: 'Target platforms'
         required: false
+        type: string
         default: 'linux/amd64,linux/arm64'
 
 jobs:
@@ -116,8 +125,8 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             GIT_SHA=${{ github.sha }}
             GIT_REF=${{ github.ref }}
-          cache-from: ${{ inputs.cache && 'type=gha' || '' }}
-          cache-to: ${{ inputs.cache && 'type=gha,mode=max' || '' }}
+          cache-from: ${{ inputs.cache == 'true' && 'type=gha' || '' }}
+          cache-to: ${{ inputs.cache == 'true' && 'type=gha,mode=max' || '' }}
 
       - name: Generate SBOM
         if: ${{ inputs.push }}
@@ -137,7 +146,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ inputs.push }}
+    if: ${{ inputs.push == 'true' }}
     
     steps:
       - name: Run Trivy vulnerability scanner
@@ -155,7 +164,7 @@ jobs:
   sign:
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ inputs.push && github.event_name == 'release' }}
+    if: ${{ inputs.push == 'true' && github.event_name == 'release' }}
     
     steps:
       - name: Sign container image
