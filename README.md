@@ -139,7 +139,7 @@ The application can be configured using environment variables:
 
 ### Database Configuration
 
-- `DATABASE_PATH` - Database file path (default: "./mockj.db")
+- `DATABASE_PATH` - Database file path (default: "./data/mockj.db")
 - `DATABASE_MAX_OPEN_CONNS` - Max open connections (default: 25)
 - `DATABASE_MAX_IDLE_CONNS` - Max idle connections (default: 25)
 - `DATABASE_CONN_MAX_LIFETIME` - Connection max lifetime (default: 5m)
