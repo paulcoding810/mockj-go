@@ -38,7 +38,7 @@ COPY internal/ ./internal/
 COPY pkg/ ./pkg/
 
 # Build Go application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
 
 # Stage 3: Production image
 FROM alpine:latest
