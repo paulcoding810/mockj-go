@@ -55,7 +55,7 @@ jobs:
           # Test creating a JSON endpoint
           create_response=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"data\", \"version\": "${{ inputs.version }}\"}", "password":"test123"}' \
+            -d '{"json":"{\"test\": \"data\", \"version\": \"${{ inputs.version }}\"}", "password":"test123"}' \
             http://localhost:8080/api/json)
 
           echo "Create response: $create_response"
