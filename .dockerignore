@@ -1,3 +1,5 @@
+# Docker ignore file
+
 # Git
 .git
 .gitignore
@@ -6,9 +8,24 @@
 README.md
 *.md
 
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+web/dist/
+web/build/
+web/out/
+
+# Development files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # IDE
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
 
@@ -18,19 +35,22 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
-# Data
-data/
-*.db
-
-# Temporary
+# Temporary files
 tmp/
 temp/
 
-# Build artifacts
-mockj-go
-main
+# Testing
+coverage/
+.coverage
 
-# Test coverage
-coverage.out
-coverage.html
+# Database (should use volume)
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
