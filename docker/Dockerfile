@@ -18,7 +18,7 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Build Go application
-FROM golang:1.21-alpine AS go-builder
+FROM golang:1.25.5-alpine AS go-builder
 
 WORKDIR /app
 
