@@ -155,7 +155,7 @@ jobs:
           # Create endpoint that expires in 1 hour
           id=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"expire\"}", "password":"test123", "expires":"'$((date -u -d '+1 hour' --iso-8601)s)'"}' \
+            -d '{"json":"{\"test\": \"expire\"}", "password":"test123", "expires":"'$((date -u -d '+1 hour' +'%Y-%m-%dT%H:%M:%S.%3NZ')s)'"}' \
             http://localhost:8080/api/json | jq -r '.data.id')
 
           if [ -z "$id" ] || [ "$id" = "null" ]; then
@@ -194,8 +194,8 @@ jobs:
           # Make multiple rapid requests to test rate limiting
           success_count=0
           for i in {1..10}; do
-            status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
-            if [ "$status" = "200" ]; then
+            web_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+            if [ "$web_response" = "200" ]; then
               success_count=$((success_count + 1))
             fi
             sleep 0.1
