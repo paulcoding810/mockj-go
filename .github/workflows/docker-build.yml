@@ -1,0 +1,85 @@
+name: Build and Push Docker
+
+on:
+  release:
+    types: [created]
+  push:
+    branches: [test]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (optional)"
+        required: false
+        default: "nightly"
+
+jobs:
+  build-and-push:
+    uses: ./.github/workflows/docker-reusable.yml
+    with:
+      image_name: mockj
+      docker_context: .
+      dockerfile: docker/Dockerfile
+      target: web
+      version: ${{ github.event.inputs.version || 'nightly' }}
+      platforms: linux/amd64,linux/arm64
+      push: true
+      cache: true
+    secrets: inherit
+
+  test-image:
+    needs: build-and-push
+    uses: ./.github/workflows/test-docker.yml
+    with:
+      image_ref: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}
+      version: ${{ github.event.inputs.version || 'latest' }}
+
+  deploy-docs:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Docker README
+        run: |
+          echo "📝 Updating documentation for release ${{ github.event.release.name }}"
+          # Add any documentation update steps here
+
+      - name: Notify deployment
+        run: |
+          echo "🚀 MockJ-Go ${{ github.event.release.name }} has been deployed!"
+          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.release.name }}"
+          echo "Web Interface: Available at your deployment endpoint"
+
+  notify:
+    needs: [build-and-push, test-image]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Build Summary
+        run: |
+          echo "📊 Docker Build & Test Summary"
+          echo "==============================="
+          echo "Version: ${{ github.event.inputs.version || 'nightly' }}"
+          echo "Image: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}"
+          echo ""
+
+          if [ "${{ needs.build-and-push.result }}" = "success" ]; then
+            echo "✅ Docker Build: PASSED"
+          else
+            echo "❌ Docker Build: FAILED"
+          fi
+
+          if [ "${{ needs.test-image.result }}" = "success" ]; then
+            echo "✅ Image Tests: PASSED"
+          else
+            echo "❌ Image Tests: FAILED"
+          fi
+
+          echo ""
+          echo "🌐 Quick Start Commands:"
+          echo "docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}"
+          echo "docker-compose up -d"
