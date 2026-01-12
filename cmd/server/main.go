@@ -41,6 +41,7 @@ func main() {
 	// API routes (must be registered before static files)
 	mux.HandleFunc("POST /api/json", jsonHandler.CreateJSON)
 	mux.HandleFunc("GET /api/json/{id}", jsonHandler.GetJSON)
+	mux.HandleFunc("GET /api/json/{id}/content", jsonHandler.GetJSONContent)
 	mux.HandleFunc("PUT /api/json/{id}", jsonHandler.UpdateJSON)
 	mux.HandleFunc("DELETE /api/json/{id}", jsonHandler.DeleteJSON)
 

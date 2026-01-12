@@ -115,6 +115,30 @@ func (h *JSONHandler) GetJSON(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetJSONContent handles GET /api/json/{id}/content - returns raw JSON content
+func (h *JSONHandler) GetJSONContent(w http.ResponseWriter, r *http.Request) {
+	id := extractIDFromPath(r.URL.Path)
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "invalid_id", "ID is required")
+		return
+	}
+
+	jsonModel, err := h.db.GetJSON(id)
+	if err != nil {
+		if err.Error() == "json not found or expired" {
+			h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
+		} else {
+			h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to retrieve JSON")
+		}
+		return
+	}
+
+	// Set Content-Type to application/json and return the raw content
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(jsonModel.Content))
+}
+
 // UpdateJSON handles PUT /api/json/{id}
 func (h *JSONHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	id := extractIDFromPath(r.URL.Path)
@@ -251,7 +275,7 @@ func (h *JSONHandler) writeError(w http.ResponseWriter, status int, errType, mes
 func extractIDFromPath(path string) string {
 	parts := strings.Split(path, "/")
 	if len(parts) >= 4 {
-		return parts[3] // /api/json/{id}
+		return parts[3] // /api/json/{id} or /api/json/{id}/content
 	}
 	return ""
 }
