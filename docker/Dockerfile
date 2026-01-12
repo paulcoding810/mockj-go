@@ -37,6 +37,8 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY pkg/ ./pkg/
 
+RUN mkdir -p ./data
+
 # Build Go application
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
@@ -50,15 +52,13 @@ RUN apk --no-cache add ca-certificates sqlite tzdata && \
 
 WORKDIR /app
 
+COPY --from=go-builder data data
+
 # Copy compiled Go binary from go-builder stage
 COPY --from=go-builder /app/main ./
 
 # Copy built React application from react-builder stage
 COPY --from=react-builder /app/web/dist ./web/dist/
-
-# Create data directory with proper permissions
-RUN mkdir -p /app/data && \
-    chown -R appuser:appgroup /app
 
 # Switch to non-root user
 USER appuser
