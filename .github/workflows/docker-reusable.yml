@@ -21,7 +21,6 @@ on:
         description: "Docker build target"
         required: false
         type: string
-        default: "web"
       version:
         description: "Version tag"
         required: false

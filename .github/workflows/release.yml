@@ -3,14 +3,14 @@ name: Automated Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,7 +68,6 @@ jobs:
       image_name: mockj
       docker_context: .
       dockerfile: docker/Dockerfile
-      target: web
       version: ${{ needs.create-release.outputs.version }}
       platforms: linux/amd64,linux/arm64
       push: true
@@ -85,7 +84,7 @@ jobs:
   update-docs:
     needs: create-release
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -110,7 +109,7 @@ jobs:
     needs: test-release
     runs-on: ubuntu-latest
     if: contains(github.ref, '-beta') || contains(github.ref, '-rc')
-    
+
     steps:
       - name: Deploy to staging
         run: |
@@ -122,7 +121,7 @@ jobs:
     needs: [create-release, build-and-push, test-release]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Prepare announcement
         id: announce
