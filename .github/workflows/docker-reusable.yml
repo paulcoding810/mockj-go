@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload SBOM artifact
         if: ${{ inputs.push }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ inputs.image_name }}-${{ inputs.version }}
           path: sbom.spdx.json
@@ -174,7 +174,7 @@ jobs:
           image: ${{ needs.build.outputs.image }}
 
       - name: Upload signature
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: container-signature
           path: signature.json
