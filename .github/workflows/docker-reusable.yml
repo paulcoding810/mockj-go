@@ -86,8 +86,7 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+          password: ${{ secrets.GHCR_GITHUB_PAT }}
       - name: Generate tags and labels
         id: meta
         uses: docker/metadata-action@v5
