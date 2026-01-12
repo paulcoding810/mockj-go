@@ -49,6 +49,7 @@ go build -o bin/server ./cmd/server
 ## API Endpoints
 
 ### Create JSON
+
 ```http
 POST /api/json
 Content-Type: application/json
@@ -61,12 +62,15 @@ Content-Type: application/json
 ```
 
 ### Get JSON
+
 ```http
 GET /api/json/{id}
 ```
-*(No password required for read operations)*
+
+_(No password required for read operations)_
 
 ### Update JSON
+
 ```http
 PUT /api/json/{id}
 Content-Type: application/json
@@ -79,6 +83,7 @@ Content-Type: application/json
 ```
 
 ### Delete JSON
+
 ```http
 DELETE /api/json/{id}
 Content-Type: application/json
@@ -89,6 +94,7 @@ Content-Type: application/json
 ```
 
 ### Health Check
+
 ```http
 GET /health
 ```
@@ -96,6 +102,7 @@ GET /health
 ## Response Format
 
 ### Success Response
+
 ```json
 {
   "data": {
@@ -110,6 +117,7 @@ GET /health
 ```
 
 ### Error Response
+
 ```json
 {
   "error": "not_found",
@@ -122,6 +130,7 @@ GET /health
 The application can be configured using environment variables:
 
 ### Server Configuration
+
 - `SERVER_HOST` - Server host (default: "0.0.0.0")
 - `SERVER_PORT` - Server port (default: 8080)
 - `SERVER_READ_TIMEOUT` - Read timeout (default: 15s)
@@ -129,13 +138,15 @@ The application can be configured using environment variables:
 - `SERVER_IDLE_TIMEOUT` - Idle timeout (default: 60s)
 
 ### Database Configuration
-- `DATABASE_URL` - Database file path (default: "./mockj.db")
+
+- `DATABASE_PATH` - Database file path (default: "./mockj.db")
 - `DATABASE_MAX_OPEN_CONNS` - Max open connections (default: 25)
 - `DATABASE_MAX_IDLE_CONNS` - Max idle connections (default: 25)
 - `DATABASE_CONN_MAX_LIFETIME` - Connection max lifetime (default: 5m)
 - `DATABASE_CLEANUP_INTERVAL` - Cleanup interval (default: 1h)
 
 ### Rate Limiting Configuration
+
 - `RATE_LIMIT_ENABLED` - Enable rate limiting (default: true)
 - `RATE_LIMIT_REQUESTS` - Max requests per window (default: 100)
 - `RATE_LIMIT_WINDOW` - Rate limit window (default: 1m)
@@ -168,10 +179,12 @@ mockj-go/
 ## Development
 
 ### Prerequisites
+
 - Go 1.21 or later
 - SQLite3
 
 ### Setup
+
 ```bash
 # Install dependencies
 go mod download
@@ -184,6 +197,7 @@ go build -o bin/server ./cmd/server
 ```
 
 ### Testing
+
 ```bash
 # Run tests
 go test ./...
@@ -197,6 +211,7 @@ go test -cover ./...
 The application includes a modern web frontend that makes it easy to manage JSON endpoints without using curl commands.
 
 ### Accessing the Web Interface
+
 1. Start the application: `docker-compose up -d`
 2. Open your browser and navigate to: `http://localhost:8080`
 3. Use the web interface to:
@@ -207,6 +222,7 @@ The application includes a modern web frontend that makes it easy to manage JSON
    - Copy endpoint URLs easily
 
 ### Features
+
 - **JSON Editor** with syntax validation and formatting
 - **Password Protection** for secure operations
 - **URL Sharing** with copy-to-clipboard functionality
@@ -217,6 +233,7 @@ The application includes a modern web frontend that makes it easy to manage JSON
 ## Usage Examples
 
 ### Using the Web Interface (Recommended)
+
 1. Visit `http://localhost:8080`
 2. Enter your JSON content in the editor
 3. Set optional password and expiration time
@@ -226,6 +243,7 @@ The application includes a modern web frontend that makes it easy to manage JSON
 ### Using cURL API
 
 #### Create a new JSON endpoint
+
 ```bash
 curl -X POST http://localhost:8080/api/json \
   -H "Content-Type: application/json" \
@@ -237,11 +255,13 @@ curl -X POST http://localhost:8080/api/json \
 ```
 
 #### Retrieve the JSON
+
 ```bash
 curl http://localhost:8080/api/json/{your-uuid}
 ```
 
 #### Update the JSON (requires password)
+
 ```bash
 curl -X PUT http://localhost:8080/api/json/{your-uuid} \
   -H "Content-Type: application/json" \
@@ -252,6 +272,7 @@ curl -X PUT http://localhost:8080/api/json/{your-uuid} \
 ```
 
 #### Delete the JSON (requires password)
+
 ```bash
 curl -X DELETE http://localhost:8080/api/json/{your-uuid} \
   -H "Content-Type: application/json" \
@@ -263,6 +284,7 @@ curl -X DELETE http://localhost:8080/api/json/{your-uuid} \
 ## Security
 
 ### Password Protection
+
 - **Required**: Password is required when creating JSON entries
 - **Secure Storage**: Passwords are hashed using bcrypt before storage
 - **Authentication**: Password required for update and delete operations
@@ -270,20 +292,21 @@ curl -X DELETE http://localhost:8080/api/json/{your-uuid} \
 - **Public Reads**: Get operations work without password (public access)
 
 ### Password Hashing
+
 All passwords are securely hashed using bcrypt with the default cost factor. The original passwords are never stored in the database.
 
 ## Comparison with Original MockJ
 
-| Feature | MockJ (Node.js) | MockJ-Go |
-|---------|----------------|----------|
-| Language | TypeScript/Node.js | Go |
-| API | tRPC | REST API |
-| Database | SQLite | SQLite |
-| Framework | Next.js | Standard Library |
-| Password Protection | No | Yes |
-| Bundle Size | ~50MB | ~15MB |
-| Memory Usage | ~100MB | ~30MB |
-| Startup Time | ~2s | ~0.1s |
+| Feature             | MockJ (Node.js)    | MockJ-Go         |
+| ------------------- | ------------------ | ---------------- |
+| Language            | TypeScript/Node.js | Go               |
+| API                 | tRPC               | REST API         |
+| Database            | SQLite             | SQLite           |
+| Framework           | Next.js            | Standard Library |
+| Password Protection | No                 | Yes              |
+| Bundle Size         | ~50MB              | ~15MB            |
+| Memory Usage        | ~100MB             | ~30MB            |
+| Startup Time        | ~2s                | ~0.1s            |
 
 ## License
 
