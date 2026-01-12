@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+    branches: [ci, main]
 
 jobs:
   create-release:
@@ -23,41 +24,21 @@ jobs:
           version="${version#v}"
           echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog
+      - name: Create changelog
         id: changelog
-        run: |
-          echo "## Changes in ${{ steps.version.outputs.version }}"
-          echo ""
-          echo "### 🚀 Features"
-          echo "- Automated Docker image build"
-          echo "- Multi-architecture support (amd64/arm64)"
-          echo "- Security vulnerability scanning"
-          echo ""
-          echo "### 🐛 Bug Fixes"
-          echo "- Please refer to commit history"
-          echo ""
-          echo "### 📦 Dependencies"
-          echo "- Updated base images and dependencies"
-          echo ""
-          echo "### 🔧 Technical Details"
-          echo "- Built with Go ${{ matrix.go_version }}"
-          echo "- React ${{ matrix.react_version }}"
-          echo "- Multi-stage Docker build optimization"
-          echo "" > CHANGELOG.md
+        uses: requarks/changelog-action@v1
+        with:
+          includeInvalidCommits: true
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: MockJ-Go ${{ steps.version.outputs.version }}
-          body_path: CHANGELOG.md
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-          generate_release_notes: true
-          files: |
-            README.md
-            LICENSE
-          discussion_category_name: announcements
+          draft: true
+          body: ${{ steps.changelog.outputs.changes }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -81,42 +62,6 @@ jobs:
       image_ref: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
       version: ${{ needs.create-release.outputs.version }}
 
-  update-docs:
-    needs: create-release
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Update version in docs
-        run: |
-          echo "📝 Updating version references in documentation..."
-          sed -i 's/version: "[^"]*"/version: "${{ needs.create-release.outputs.version }}"/' README.md
-          sed -i 's/latest/${{ needs.create-release.outputs.version }}/g' README.md
-
-      - name: Commit version updates
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add README.md
-          if git diff --staged --quiet; then
-            git commit -m "docs: update version to ${{ needs.create-release.outputs.version }} [skip ci]"
-            git push
-          fi
-
-  deploy-staging:
-    needs: test-release
-    runs-on: ubuntu-latest
-    if: contains(github.ref, '-beta') || contains(github.ref, '-rc')
-
-    steps:
-      - name: Deploy to staging
-        run: |
-          echo "🚀 Deploying ${{ needs.create-release.outputs.version }} to staging..."
-          echo "Staging URL: https://staging.your-domain.com"
-          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}"
-
   announce:
     needs: [create-release, build-and-push, test-release]
     runs-on: ubuntu-latest
@@ -133,83 +78,3 @@ jobs:
             echo "status=❌ FAILED" >> $GITHUB_OUTPUT
             echo "message=Release ${{ needs.create-release.outputs.version }} encountered issues during build or testing." >> $GITHUB_OUTPUT
           fi
-
-      - name: Create announcement issue
-        if: steps.announce.outputs.status == '✅ SUCCESS'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🎉 Released MockJ-Go ${{ needs.create-release.outputs.version }}',
-              body: `## 🚀 Release Announcement
-
-            ${{ steps.announce.outputs.message }}
-
-            ### 📦 Installation
-
-            **Docker:**
-            \`\`\`bash
-            docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
-            \`\`\`
-
-            **Docker Compose:**
-            \`\`\`yaml
-            version: '3.8'
-            services:
-              mockj-go:
-                image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
-                ports:
-                  - "8080:8080"
-                volumes:
-                  - mockj_data:/app/data
-            \`\`\`
-
-            **Quick Start:**
-            \`\`\`bash
-            curl -sSL https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.yml | docker-compose -f - up -d
-            \`\`\`
-
-            ### 🌐 Documentation
-            - [README](https://github.com/${{ github.repository }})
-            - [Docker Hub](https://github.com/${{ github.repository }}/pkgs/container/mockj)
-            - [Website](https://your-website.com)
-
-            ### 🐛 Bug Reports
-            Please report any issues [here](https://github.com/${{ github.repository }}/issues)
-
-            ---
-            🤖 Generated by GitHub Actions on $(date)
-            `,
-              labels: ['announcement', 'release']
-            })
-
-      - name: Notify on failure
-        if: steps.announce.outputs.status == '❌ FAILED'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '❌ Release Failed: MockJ-Go ${{ needs.create-release.outputs.version }}',
-              body: `## Release Failure
-
-            ${{ steps.announce.outputs.message }}
-
-            ### 📋 Status
-
-            - **Create Release**: ${{ needs.create-release.result }}
-            - **Docker Build**: ${{ needs.build-and-push.result }}
-            - **Image Tests**: ${{ needs.test-image.result }}
-
-            ### 🔍 Next Steps
-
-            Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
-
-            ---
-            🤖 Generated by GitHub Actions on $(date)
-            `,
-              labels: ['bug', 'release']
-            })
