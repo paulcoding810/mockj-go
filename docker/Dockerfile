@@ -9,7 +9,8 @@ WORKDIR /app/web
 COPY web/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
+# RUN npm ci --only=production
 
 # Copy web source code
 COPY web/ ./
