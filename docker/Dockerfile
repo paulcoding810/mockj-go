@@ -52,7 +52,7 @@ RUN apk --no-cache add ca-certificates sqlite tzdata && \
 
 WORKDIR /app
 
-COPY --from=go-builder data data
+COPY --from=go-builder /app/data ./
 
 # Copy compiled Go binary from go-builder stage
 COPY --from=go-builder /app/main ./
