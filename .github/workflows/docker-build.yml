@@ -30,7 +30,7 @@ jobs:
     needs: build-and-push
     uses: ./.github/workflows/test-docker.yml
     with:
-      image_ref: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ github.event.inputs.version || 'latest' }}
+      image_ref: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}
       version: ${{ github.event.inputs.version || 'latest' }}
 
   deploy-docs:
@@ -50,7 +50,7 @@ jobs:
       - name: Notify deployment
         run: |
           echo "🚀 MockJ-Go ${{ github.event.release.name }} has been deployed!"
-          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ github.event.release.name }}"
+          echo "Docker Image: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.release.name }}"
           echo "Web Interface: Available at your deployment endpoint"
 
   notify:
@@ -64,7 +64,7 @@ jobs:
           echo "📊 Docker Build & Test Summary"
           echo "==============================="
           echo "Version: ${{ github.event.inputs.version || 'nightly' }}"
-          echo "Image: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ github.event.inputs.version || 'latest' }}"
+          echo "Image: ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}"
           echo ""
 
           if [ "${{ needs.build-and-push.result }}" = "success" ]; then
@@ -81,5 +81,5 @@ jobs:
 
           echo ""
           echo "🌐 Quick Start Commands:"
-          echo "docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj-go:${{ github.event.inputs.version || 'latest' }}"
+          echo "docker run -d -p 8080:8080 ghcr.io/${{ github.repository_owner }}/mockj:${{ github.event.inputs.version || 'latest' }}"
           echo "docker-compose up -d"
