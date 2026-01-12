@@ -155,7 +155,7 @@ jobs:
           # Create endpoint that expires in 1 hour
           id=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"expire\"}", "password":"test123", "expires":"'$((date -u -d '+1 hour' +'%Y-%m-%dT%H:%M:%S.%3NZ')s)'"}' \
+            -d '{"json":"{\"test\": \"expire\"}", "password":"test123", "expires":"'$(date -u -d '+1 hour' +'%Y-%m-%dT%H:%M:%S.%3NZ')'"}' \
             http://localhost:8080/api/json | jq -r '.data.id')
 
           if [ -z "$id" ] || [ "$id" = "null" ]; then
