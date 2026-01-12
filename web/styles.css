@@ -579,6 +579,66 @@ label {
     border: 0;
 }
 
+/* Endpoint Page Specific Styles */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-content {
+    text-align: center;
+    padding: 2rem;
+}
+
+.error-content h2 {
+    color: var(--danger-color);
+    margin-bottom: 1rem;
+}
+
+.error-content p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.form-actions .btn {
+    flex: 1;
+}
+
+.endpoint-section .url-input-group {
+    margin-bottom: 1.5rem;
+}
+
+.content-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.endpoint-details {
+    margin-bottom: 1.5rem;
+}
+
+.validation-status {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
 /* Print Styles */
 @media print {
     .header,

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,8 +52,40 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	// Static files (web frontend) - serves as fallback
-	mux.Handle("/", http.FileServer(http.Dir("./web/")))
+	// Static files handler
+	fileServer := http.FileServer(http.Dir("./web/"))
+
+	// Individual endpoint view handler
+	mux.HandleFunc("GET /{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		// Skip static files and API routes
+		if strings.Contains(id, ".") || id == "api" || id == "health" {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if this looks like an endpoint ID (UUID format)
+		if len(id) > 10 {
+			// Check if endpoint exists
+			_, err := db.GetJSON(id)
+			if err != nil {
+				// If not found, serve index
+				http.ServeFile(w, r, "./web/index.html")
+				return
+			}
+
+			// Serve the endpoint view page
+			http.ServeFile(w, r, "./web/endpoint.html")
+			return
+		}
+
+		// For other root paths, serve index.html
+		http.ServeFile(w, r, "./web/index.html")
+	})
+
+	// Static files (web frontend)
+	mux.Handle("/", fileServer)
 
 	// Apply middleware
 	handler := middleware.Logging(mux)

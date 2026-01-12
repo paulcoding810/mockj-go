@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MockJ-Go - JSON Endpoint {{ID}}</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="container">
+        <div class="header-content">
+          <h1 class="logo">
+            <span class="logo-icon">📦</span>
+            <a href="/" style="text-decoration: none; color: inherit"
+              >MockJ-Go</a
+            >
+          </h1>
+          <p class="tagline">View and modify JSON endpoint</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <!-- Loading State -->
+        <div id="loadingState" class="card">
+          <div style="text-align: center; padding: 2rem">
+            <div class="spinner"></div>
+            <p>Loading JSON endpoint...</p>
+          </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="card" style="display: none">
+          <div class="error-content">
+            <h2>❌ Endpoint Not Found</h2>
+            <p id="errorMessage">The JSON endpoint could not be loaded.</p>
+            <a href="/" class="btn btn-primary">Create New Endpoint</a>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none">
+          <div class="app-grid">
+            <!-- Endpoint Info Section -->
+            <section class="endpoint-section card">
+              <h2 class="section-title">Endpoint Information</h2>
+              <div class="endpoint-info">
+                <div class="url-display">
+                  <label>Endpoint URL</label>
+                  <div class="url-input-group">
+                    <input
+                      type="text"
+                      id="endpointUrl"
+                      class="form-control"
+                      readonly
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-secondary"
+                      id="copyUrlBtn"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div class="endpoint-details">
+                  <div class="detail-item">
+                    <span class="detail-label">ID:</span>
+                    <span id="endpointId"></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Created:</span>
+                    <span id="createdTime"></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Modified:</span>
+                    <span id="modifiedTime"></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Expires:</span>
+                    <span id="expiresTime"></span>
+                  </div>
+                </div>
+
+                <div class="endpoint-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="viewRawBtn"
+                  >
+                    View Raw JSON
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="updateJsonBtn"
+                  >
+                    Update
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    id="deleteJsonBtn"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- JSON Content Section -->
+            <section class="content-section card">
+              <h2 class="section-title">JSON Content</h2>
+              <div class="json-display">
+                <pre id="jsonContent"></pre>
+              </div>
+              <div class="content-actions">
+                <button type="button" class="btn btn-secondary" id="formatBtn">
+                  Format JSON
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  id="copyJsonBtn"
+                >
+                  Copy JSON
+                </button>
+              </div>
+            </section>
+
+            <!-- Update Section (Initially Hidden) -->
+            <section
+              class="update-section card"
+              id="updateSection"
+              style="display: none"
+            >
+              <h2 class="section-title">Update JSON Endpoint</h2>
+              <form id="updateForm" class="form">
+                <div class="form-group">
+                  <label for="updateJson">New JSON Content</label>
+                  <textarea
+                    id="updateJson"
+                    name="updateJson"
+                    class="json-editor"
+                    rows="12"
+                    required
+                  ></textarea>
+                  <div class="editor-toolbar">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      id="formatUpdateBtn"
+                    >
+                      Format JSON
+                    </button>
+                    <span
+                      class="validation-status"
+                      id="updateValidationStatus"
+                    ></span>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="updatePassword">Current Password</label>
+                    <input
+                      type="password"
+                      id="updatePassword"
+                      name="updatePassword"
+                      class="form-control"
+                      placeholder="Enter current password"
+                      required
+                    />
+                    <small class="form-hint"
+                      >Required to update this endpoint</small
+                    >
+                  </div>
+
+                  <div class="form-group">
+                    <label for="updateExpires">Expires In</label>
+                    <select
+                      id="updateExpires"
+                      name="updateExpires"
+                      class="form-control"
+                    >
+                      <option value="1">1 hour</option>
+                      <option value="24">1 day</option>
+                      <option value="168">1 week</option>
+                      <option value="720">30 days</option>
+                      <option value="1440">60 days</option>
+                      <option value="4320">180 days</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="cancelUpdateBtn"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    Update Endpoint
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <!-- Delete Confirmation Section (Initially Hidden) -->
+            <section
+              class="delete-section card"
+              id="deleteSection"
+              style="display: none"
+            >
+              <h2 class="section-title">Delete JSON Endpoint</h2>
+              <div class="warning-box">
+                <p>
+                  ⚠️ This action cannot be undone. The endpoint will be
+                  permanently deleted.
+                </p>
+              </div>
+
+              <form id="deleteForm" class="form">
+                <div class="form-group">
+                  <label for="deletePassword">Password</label>
+                  <input
+                    type="password"
+                    id="deletePassword"
+                    name="deletePassword"
+                    class="form-control"
+                    placeholder="Enter password"
+                    required
+                  />
+                  <small class="form-hint"
+                    >Required to delete this endpoint</small
+                  >
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="cancelDeleteBtn"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" class="btn btn-danger">
+                    Delete Endpoint
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2024 MockJ-Go. Create temporary JSON endpoints with ease.</p>
+      </div>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
+    <script>
+      // Get endpoint ID from URL path
+      const pathParts = window.location.pathname.split("/");
+      const endpointId = pathParts[pathParts.length - 1];
+
+      // Initialize the page
+      document.addEventListener("DOMContentLoaded", function () {
+        if (endpointId) {
+          loadEndpoint(endpointId);
+        } else {
+          showError("Invalid endpoint ID");
+        }
+      });
+
+      // Load endpoint data
+      async function loadEndpoint(id) {
+        try {
+          const response = await fetch(`/api/json/${id}`);
+
+          if (!response.ok) {
+            if (response.status === 404) {
+              showError("JSON endpoint not found or expired");
+            } else {
+              showError("Failed to load endpoint");
+            }
+            return;
+          }
+
+          const result = await response.json();
+          const data = result.data;
+
+          // Update UI with endpoint data
+          document.getElementById("endpointId").textContent = data.id;
+          document.getElementById("endpointUrl").value =
+            `${window.location.origin}/api/json/${id}`;
+          document.getElementById("createdTime").textContent = new Date(
+            data.createdAt
+          ).toLocaleString();
+          document.getElementById("modifiedTime").textContent = new Date(
+            data.modifiedAt
+          ).toLocaleString();
+          document.getElementById("expiresTime").textContent = new Date(
+            data.expires
+          ).toLocaleString();
+          document.getElementById("jsonContent").textContent = JSON.stringify(
+            JSON.parse(data.json),
+            null,
+            2
+          );
+
+          // Show main content
+          document.getElementById("loadingState").style.display = "none";
+          document.getElementById("mainContent").style.display = "block";
+        } catch (error) {
+          console.error("Error loading endpoint:", error);
+          showError("Failed to load endpoint data");
+        }
+      }
+
+      // Show error state
+      function showError(message) {
+        document.getElementById("loadingState").style.display = "none";
+        document.getElementById("errorMessage").textContent = message;
+        document.getElementById("errorState").style.display = "block";
+      }
+
+      // Event listeners will be added by the main script.js
+    </script>
+  </body>
+</html>
