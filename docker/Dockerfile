@@ -3,7 +3,7 @@
 # Stage 1: Build React application
 FROM node:18-alpine AS react-builder
 
-WORKDIR /app
+WORKDIR /app/web
 
 # Copy web package files
 COPY web/package*.json ./
