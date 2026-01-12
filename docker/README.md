@@ -35,18 +35,18 @@ docker run -d \
 
 ### Environment Variables
 
-| Variable                    | Default              | Description                          |
-| --------------------------- | -------------------- | ------------------------------------ |
-| `SERVER_HOST`               | `0.0.0.0`            | Server bind address                  |
-| `SERVER_PORT`               | `8080`               | Server port                          |
-| `SERVER_READ_TIMEOUT`       | `30s`                | HTTP read timeout                    |
-| `SERVER_WRITE_TIMEOUT`      | `30s`                | HTTP write timeout                   |
-| `SERVER_IDLE_TIMEOUT`       | `60s`                | HTTP idle timeout                    |
-| `DATABASE_PATH`             | `/app/data/mockj.db` | SQLite database path                 |
-| `DATABASE_CLEANUP_INTERVAL` | `1h`                 | Cleanup interval for expired records |
-| `RATE_LIMIT_ENABLED`        | `true`               | Enable rate limiting                 |
-| `RATE_LIMIT_REQUESTS`       | `100`                | Max requests per window              |
-| `RATE_LIMIT_WINDOW`         | `1m`                 | Rate limit time window               |
+| Variable                    | Default         | Description                          |
+| --------------------------- | --------------- | ------------------------------------ |
+| `SERVER_HOST`               | `0.0.0.0`       | Server bind address                  |
+| `SERVER_PORT`               | `8080`          | Server port                          |
+| `SERVER_READ_TIMEOUT`       | `30s`           | HTTP read timeout                    |
+| `SERVER_WRITE_TIMEOUT`      | `30s`           | HTTP write timeout                   |
+| `SERVER_IDLE_TIMEOUT`       | `60s`           | HTTP idle timeout                    |
+| `DATABASE_PATH`             | `data/mockj.db` | SQLite database path                 |
+| `DATABASE_CLEANUP_INTERVAL` | `1h`            | Cleanup interval for expired records |
+| `RATE_LIMIT_ENABLED`        | `true`          | Enable rate limiting                 |
+| `RATE_LIMIT_REQUESTS`       | `100`           | Max requests per window              |
+| `RATE_LIMIT_WINDOW`         | `1m`            | Rate limit time window               |
 
 ### Custom Configuration
 
@@ -82,10 +82,10 @@ volumes:
 
 ```bash
 # Create backup
-docker exec mockj-go cp /app/data/mockj.db ./backup-$(date +%Y%m%d).db
+docker exec mockj-go cp data/mockj.db ./backup-$(date +%Y%m%d).db
 
 # Restore backup
-docker cp ./backup-20231201.db mockj-go:/app/data/mockj.db
+docker cp ./backup-20231201.db mockj-go:data/mockj.db
 docker restart mockj-go
 ```
 
@@ -107,7 +107,7 @@ services:
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - DATABASE_PATH=/app/data/mockj.db
+      - DATABASE_PATH=data/mockj.db
       - DATABASE_CLEANUP_INTERVAL=30m
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_REQUESTS=1000
@@ -259,7 +259,7 @@ docker-compose up -d
 docker exec mockj-go ls -la /app/data/
 
 # Check database integrity
-docker exec mockj-go sqlite3 /app/data/mockj.db "PRAGMA integrity_check;"
+docker exec mockj-go sqlite3 data/mockj.db "PRAGMA integrity_check;"
 
 # Recreate volume if corrupted
 docker-compose down

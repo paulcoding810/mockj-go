@@ -65,7 +65,7 @@ deploy:
 backup:
 	@echo "💾 Creating database backup..."
 	@mkdir -p ./backups
-	@docker exec mockj-go cp /app/data/mockj.db ./backups/backup-$(shell date +%Y%m%d-%H%M%S).db
+	@docker exec mockj-go cp data/mockj.db ./backups/backup-$(shell date +%Y%m%d-%H%M%S).db
 	@echo "✅ Backup created in ./backups/"
 
 # List backups
@@ -80,7 +80,7 @@ restore:
 		exit 1; \
 	fi
 	@echo "🔄 Restoring database from $(FILE)..."
-	@docker cp $(FILE) mockj-go:/app/data/mockj.db
+	@docker cp $(FILE) mockj-go:data/mockj.db
 	@docker restart mockj-go
 	@echo "✅ Database restored successfully"
 

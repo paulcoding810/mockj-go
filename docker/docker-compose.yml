@@ -16,7 +16,7 @@ services:
       - SERVER_IDLE_TIMEOUT=60s
       
       # Database configuration
-      - DATABASE_PATH=/app/data/mockj.db
+      - DATABASE_PATH=data/mockj.db
       - DATABASE_CLEANUP_INTERVAL=1h
       
       # Rate limiting configuration
