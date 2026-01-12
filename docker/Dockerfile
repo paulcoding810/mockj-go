@@ -56,9 +56,6 @@ COPY --from=go-builder /app/main ./
 # Copy built React application from react-builder stage
 COPY --from=react-builder /app/web/dist ./web/dist/
 
-# Copy original static files as fallback
-COPY --from=go-builder /app/web ./web-original/
-
 # Create data directory with proper permissions
 RUN mkdir -p /app/data && \
     chown -R appuser:appgroup /app
