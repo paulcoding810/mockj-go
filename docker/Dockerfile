@@ -51,7 +51,6 @@ RUN apk --no-cache add ca-certificates sqlite tzdata && \
 WORKDIR /app
 
 # Copy database
-# COPY --from=go-builder /app/data ./
 
 # Copy compiled Go binary from go-builder stage
 COPY --from=go-builder /app/main ./
@@ -60,11 +59,7 @@ COPY --from=go-builder /app/main ./
 COPY --from=react-builder /app/web/dist ./web/dist/
 
 # Create data directory with proper permissions
-RUN mkdir -p /app/data && \
-    chown -R appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 8080
