@@ -37,7 +37,7 @@ type RateLimitConfig struct {
 }
 
 func Load() (*Config, error) {
-	dbPath := getEnv("DATABASE_PATH", "./data/mockj.db")
+	dbPath := getEnv("DATABASE_PATH", "data/mockj.db")
 
 	// Ensure database directory exists
 	if err := ensureDatabaseDir(dbPath); err != nil {

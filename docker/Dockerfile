@@ -42,6 +42,8 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
 
 RUN ls -la
 
+RUN ls internal/config
+
 # Stage 3: Production image
 FROM alpine:latest
 
