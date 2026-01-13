@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -37,13 +36,6 @@ type RateLimitConfig struct {
 }
 
 func Load() (*Config, error) {
-	dbPath := getEnv("DATABASE_PATH", "data/mockj.db")
-
-	// Ensure database directory exists
-	if err := ensureDatabaseDir(dbPath); err != nil {
-		return nil, fmt.Errorf("failed to ensure database directory: %w", err)
-	}
-
 	config := &Config{
 		Server: ServerConfig{
 			Host:         getEnv("SERVER_HOST", "0.0.0.0"),
@@ -53,7 +45,7 @@ func Load() (*Config, error) {
 			IdleTimeout:  getEnvAsDuration("SERVER_IDLE_TIMEOUT", 60*time.Second),
 		},
 		Database: DatabaseConfig{
-			DataSourceName:  dbPath,
+			DataSourceName:  getEnv("DATABASE_PATH", "data/mockj.db"),
 			MaxOpenConns:    getEnvAsInt("DATABASE_MAX_OPEN_CONNS", 25),
 			MaxIdleConns:    getEnvAsInt("DATABASE_MAX_IDLE_CONNS", 25),
 			ConnMaxLifetime: getEnvAsDuration("DATABASE_CONN_MAX_LIFETIME", 5*time.Minute),
@@ -105,9 +97,4 @@ func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 		}
 	}
 	return defaultValue
-}
-
-func ensureDatabaseDir(dbPath string) error {
-	dir := filepath.Dir(dbPath)
-	return os.MkdirAll(dir, 0755)
 }
