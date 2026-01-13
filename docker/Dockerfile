@@ -40,6 +40,8 @@ COPY pkg/ ./pkg/
 # Build Go application
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
+RUN ls -la
+
 # Stage 3: Production image
 FROM alpine:latest
 
@@ -50,6 +52,7 @@ RUN apk --no-cache add ca-certificates sqlite tzdata && \
 
 WORKDIR /app
 
+# Copy database
 COPY --from=go-builder /app/data ./
 
 # Copy compiled Go binary from go-builder stage
