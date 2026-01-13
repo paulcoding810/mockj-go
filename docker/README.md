@@ -82,10 +82,10 @@ volumes:
 
 ```bash
 # Create backup
-docker exec mockj-go cp data/mockj.db ./backup-$(date +%Y%m%d).db
+docker exec mockj-go cp /app/data/mockj.db ./backup-$(date +%Y%m%d).db
 
 # Restore backup
-docker cp ./backup-20231201.db mockj-go:data/mockj.db
+docker cp ./backup-20231201.db mockj-go:/app/data/mockj.db
 docker restart mockj-go
 ```
 
@@ -107,7 +107,7 @@ services:
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - DATABASE_PATH=data/mockj.db
+      - DATABASE_PATH=/app/data/mockj.db
       - DATABASE_CLEANUP_INTERVAL=30m
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_REQUESTS=1000
