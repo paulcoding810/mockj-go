@@ -37,9 +37,6 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY pkg/ ./pkg/
 
-# Create data directory
-RUN mkdir -p ./data
-
 # Build Go application
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
@@ -62,6 +59,10 @@ COPY --from=go-builder /app/main ./
 # Copy built React application from react-builder stage
 COPY --from=react-builder /app/web/dist ./web/dist/
 
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && \
+    chown -R appuser:appgroup /app
+    
 # Switch to non-root user
 USER appuser
 
@@ -72,6 +73,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run the application with database path
-ENV DATABASE_PATH=/app/data/mockj.db
+# Run the application
 CMD ["./main"]

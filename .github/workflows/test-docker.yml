@@ -22,6 +22,8 @@ jobs:
         image: ${{ inputs.image_ref }}
         ports:
           - 8080:8080
+        volumes:
+          - /tmp/mockj-data:/app/data
         env:
           SERVER_HOST: 0.0.0.0
           SERVER_PORT: 8080
