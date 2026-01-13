@@ -25,7 +25,7 @@ jobs:
         env:
           SERVER_HOST: 0.0.0.0
           SERVER_PORT: 8080
-          DATABASE_PATH: data/mockj.db
+          DATABASE_PATH: /app/data/mockj.db
           DATABASE_CLEANUP_INTERVAL: 1h
           RATE_LIMIT_ENABLED: true
           RATE_LIMIT_REQUESTS: 100

@@ -43,10 +43,6 @@ RUN mkdir -p ./data
 # Build Go application
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
-RUN ls -la
-
-RUN ls ..
-
 # Stage 3: Production image
 FROM alpine:latest
 
