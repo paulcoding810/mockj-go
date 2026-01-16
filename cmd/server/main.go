@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -52,65 +51,8 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	// Static files handler - check for React Vite build first, then legacy React build, then fallback to original web files
-	var fileServer http.Handler
-	if _, err := os.Stat("./web/dist"); err == nil {
-		// React Vite build exists, use it
-		fileServer = http.FileServer(http.Dir("./web/dist"))
-	} else if _, err := os.Stat("./web/build"); err == nil {
-		// React build exists, use it
-		fileServer = http.FileServer(http.Dir("./web/build"))
-	} else {
-		// Fallback to original static files
-		fileServer = http.FileServer(http.Dir("./web/"))
-	}
-
-	// Individual endpoint view handler
-	mux.HandleFunc("GET /{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-
-		// Skip static files and API routes
-		if strings.Contains(id, ".") || id == "api" || id == "health" {
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-
-		// Check if this looks like an endpoint ID (UUID format)
-		if len(id) > 10 {
-			// Check if endpoint exists
-			_, err := db.GetJSON(id)
-			if err != nil {
-				// If not found, serve React Vite index if available
-				if _, err := os.Stat("./web/dist"); err == nil {
-					http.ServeFile(w, r, "./web/dist/index.html")
-				} else if _, err := os.Stat("./web/build"); err == nil {
-					http.ServeFile(w, r, "./web/build/index.html")
-				} else {
-					http.ServeFile(w, r, "./web/index.html")
-				}
-				return
-			}
-
-			// Serve React Vite app (will handle routing)
-			if _, err := os.Stat("./web/dist"); err == nil {
-				http.ServeFile(w, r, "./web/dist/index.html")
-			} else if _, err := os.Stat("./web/build"); err == nil {
-				http.ServeFile(w, r, "./web/build/index.html")
-			} else {
-				http.ServeFile(w, r, "./web/index.html")
-			}
-			return
-		}
-
-		// For other root paths, serve index
-		if _, err := os.Stat("./web/dist"); err == nil {
-			http.ServeFile(w, r, "./web/dist/index.html")
-		} else if _, err := os.Stat("./web/build"); err == nil {
-			http.ServeFile(w, r, "./web/build/index.html")
-		} else {
-			http.ServeFile(w, r, "./web/index.html")
-		}
-	})
+	// Static files handler - serve only from web/dist
+	fileServer := http.FileServer(http.Dir("./web/dist"))
 
 	// Static files (web frontend)
 	mux.Handle("/", fileServer)

@@ -6,8 +6,9 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"mockj-go/internal/models"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
@@ -73,7 +74,7 @@ func (d *Database) CreateJSON(json *models.JSON) error {
 // GetJSON retrieves a JSON entity by ID
 func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	query := `
-	SELECT id, json, password, created_at, modified_at, expires
+	SELECT id, json, created_at, modified_at, expires
 	FROM json
 	WHERE id = ? AND expires > ?
 	`
@@ -82,7 +83,6 @@ func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	err := d.db.QueryRow(query, id, time.Now()).Scan(
 		&json.ID,
 		&json.Content,
-		&json.Password,
 		&json.CreatedAt,
 		&json.ModifiedAt,
 		&json.Expires,
