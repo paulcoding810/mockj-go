@@ -29,7 +29,7 @@ export const JsonHelper = {
     } catch (error) {
       return jsonString;
     }
-  }
+  },
 };
 
 // Date utilities
@@ -42,22 +42,22 @@ export const DateHelper = {
     const date = new Date(dateString);
     const now = new Date();
     const diff = date - now;
-    
+
     if (diff < 0) {
-      return 'Expired';
+      return "Expired";
     }
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''} ${hours} hour${hours > 1 ? 's' : ''}`;
+      return `${days} day${days > 1 ? "s" : ""} ${hours} hour${hours > 1 ? "s" : ""}`;
     } else if (hours > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''}`;
+      return `${hours} hour${hours > 1 ? "s" : ""}`;
     } else {
-      return 'Less than 1 hour';
+      return "Less than 1 hour";
     }
-  }
+  },
 };
 
 // Clipboard utilities
@@ -68,13 +68,13 @@ export const ClipboardHelper = {
       return true;
     } catch (err) {
       // Fallback for older browsers
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = text;
       document.body.appendChild(textArea);
       textArea.select();
-      document.execCommand('copy');
+      document.execCommand("copy");
       document.body.removeChild(textArea);
       return true;
     }
-  }
+  },
 };

@@ -7,7 +7,8 @@ body {
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 .App {
@@ -36,7 +37,7 @@ code {
 
 /* JSON editor styles */
 .json-editor {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
 }
@@ -46,7 +47,7 @@ code {
   border: 1px solid #e9ecef;
   border-radius: 8px;
   padding: 16px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -73,8 +74,12 @@ code {
 
 /* Loading spinner */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .spinner {

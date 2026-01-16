@@ -8,7 +8,7 @@ class MockJGoClient {
     const url = `${this.baseUrl}${endpoint}`;
     const config = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
@@ -20,13 +20,13 @@ class MockJGoClient {
 
       if (!response.ok) {
         throw new Error(
-          data.error || data.message || `HTTP ${response.status}`
+          data.error || data.message || `HTTP ${response.status}`,
         );
       }
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error("API request failed:", error);
       throw error;
     }
   }
@@ -35,8 +35,8 @@ class MockJGoClient {
     const expires = new Date();
     expires.setHours(expires.getHours() + parseInt(expiresInHours));
 
-    return this.request('/api/json', {
-      method: 'POST',
+    return this.request("/api/json", {
+      method: "POST",
       body: JSON.stringify({
         json: jsonContent,
         password: password || undefined,
@@ -54,7 +54,7 @@ class MockJGoClient {
     expires.setHours(expires.getHours() + parseInt(expiresInHours));
 
     return this.request(`/api/json/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({
         json: jsonContent,
         password: password,
@@ -65,7 +65,7 @@ class MockJGoClient {
 
   async deleteJson(id, password) {
     return this.request(`/api/json/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       body: JSON.stringify({
         password: password,
       }),

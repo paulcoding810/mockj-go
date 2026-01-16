@@ -1,9 +1,9 @@
-import { Snackbar, Alert, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Snackbar, Alert, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
 export default function ToastContainer({ toasts }) {
   return (
-    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999 }}>
+    <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999 }}>
       {toasts.map((toast) => (
         <Snackbar
           key={toast.id}
