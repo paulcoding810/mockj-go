@@ -67,7 +67,7 @@ function App() {
           }}
         >
           <Typography variant="h3" component="h1" gutterBottom>
-            📦 MockJ-Go
+            {"{ }"} MockJ
           </Typography>
           <Typography variant="h6" color="text.secondary">
             Create temporary JSON endpoints instantly
