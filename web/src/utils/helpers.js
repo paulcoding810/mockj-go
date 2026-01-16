@@ -78,3 +78,92 @@ export const ClipboardHelper = {
     }
   },
 };
+
+// Local storage utilities for recent endpoints
+export const StorageHelper = {
+  RECENT_ENDPOINTS_KEY: "mockj-recent-endpoints",
+  MAX_RECENT_ITEMS: 10,
+
+  getRecentEndpoints() {
+    try {
+      const stored = localStorage.getItem(this.RECENT_ENDPOINTS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error("Error reading recent endpoints:", error);
+      return [];
+    }
+  },
+
+  saveRecentEndpoint(endpoint) {
+    try {
+      const recents = this.getRecentEndpoints();
+
+      // Remove existing item with same ID if it exists
+      const filteredRecents = recents.filter((item) => item.id !== endpoint.id);
+
+      // Add new item at the beginning
+      const updatedRecents = [endpoint, ...filteredRecents];
+
+      // Keep only the most recent items
+      const limitedRecents = updatedRecents.slice(0, this.MAX_RECENT_ITEMS);
+
+      localStorage.setItem(
+        this.RECENT_ENDPOINTS_KEY,
+        JSON.stringify(limitedRecents),
+      );
+      return limitedRecents;
+    } catch (error) {
+      console.error("Error saving recent endpoint:", error);
+      return [];
+    }
+  },
+
+  cleanupExpiredEndpoints() {
+    try {
+      const recents = this.getRecentEndpoints();
+      const now = new Date();
+
+      const validRecents = recents.filter((endpoint) => {
+        if (!endpoint.expires) return true;
+        return new Date(endpoint.expires) > now;
+      });
+
+      if (validRecents.length !== recents.length) {
+        localStorage.setItem(
+          this.RECENT_ENDPOINTS_KEY,
+          JSON.stringify(validRecents),
+        );
+      }
+
+      return validRecents;
+    } catch (error) {
+      console.error("Error cleaning up expired endpoints:", error);
+      return [];
+    }
+  },
+
+  removeRecentEndpoint(id) {
+    try {
+      const recents = this.getRecentEndpoints();
+      const filteredRecents = recents.filter((item) => item.id !== id);
+      localStorage.setItem(
+        this.RECENT_ENDPOINTS_KEY,
+        JSON.stringify(filteredRecents),
+      );
+      return filteredRecents;
+    } catch (error) {
+      console.error("Error removing recent endpoint:", error);
+      return [];
+    }
+  },
+
+  clearRecentEndpoints() {
+    try {
+      localStorage.removeItem(this.RECENT_ENDPOINTS_KEY);
+      return [];
+    } catch (error) {
+      console.error("Error clearing recent endpoints:", error);
+      return [];
+    }
+  },
+};

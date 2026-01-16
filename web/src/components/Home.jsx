@@ -26,7 +26,12 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import MockJGoClient from "../services/api.js";
-import { JsonHelper, DateHelper, ClipboardHelper } from "../utils/helpers.js";
+import {
+  JsonHelper,
+  DateHelper,
+  ClipboardHelper,
+  StorageHelper,
+} from "../utils/helpers.js";
 
 export default function Home({ addToast, initialId = "", viewMode = false }) {
   const [jsonContent, setJsonContent] = useState("");
@@ -114,11 +119,16 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
       const endpointUrl = `${window.location.origin}/api/json/${response.data.id}`;
       const viewUrl = `${window.location.origin}/${response.data.id}`;
 
-      setEndpoint({
+      const endpointData = {
         ...response.data,
         endpointUrl,
         viewUrl,
-      });
+      };
+
+      setEndpoint(endpointData);
+
+      // Save to local storage for recent endpoints
+      StorageHelper.saveRecentEndpoint(endpointData);
 
       addToast("JSON endpoint created successfully!", "success");
     } catch (error) {
