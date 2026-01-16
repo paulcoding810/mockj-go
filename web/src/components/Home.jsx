@@ -716,6 +716,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                         <MenuItem value="168">1 week</MenuItem>
                         <MenuItem value="720">30 days</MenuItem>
                         <MenuItem value="1440">60 days</MenuItem>
+                        <MenuItem value="4320">180 days</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
