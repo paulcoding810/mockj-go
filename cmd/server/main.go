@@ -25,7 +25,7 @@ func main() {
 	// Initialize database
 	db, err := database.NewDatabase(cfg.Database.DataSourceName)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to initialize database: %s %v", cfg.Database.DataSourceName, err)
 	}
 	defer db.Close()
 

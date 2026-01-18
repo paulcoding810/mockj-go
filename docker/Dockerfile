@@ -9,7 +9,8 @@ WORKDIR /app/web
 COPY web/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
+# RUN npm ci --only=production
 
 # Copy web source code
 COPY web/ ./
@@ -18,12 +19,12 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Build Go application
-FROM golang:1.21-alpine AS go-builder
+FROM golang:1.25.5-alpine AS go-builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates build-base
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -49,21 +50,16 @@ RUN apk --no-cache add ca-certificates sqlite tzdata && \
 
 WORKDIR /app
 
+# Copy database
+
 # Copy compiled Go binary from go-builder stage
 COPY --from=go-builder /app/main ./
 
 # Copy built React application from react-builder stage
 COPY --from=react-builder /app/web/dist ./web/dist/
 
-# Copy original static files as fallback
-COPY --from=go-builder /app/web ./web-original/
-
 # Create data directory with proper permissions
-RUN mkdir -p /app/data && \
-    chown -R appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 8080

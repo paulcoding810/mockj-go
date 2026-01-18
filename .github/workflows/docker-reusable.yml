@@ -1,0 +1,163 @@
+name: Reusable Docker Build
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: "Name of the Docker image"
+        required: true
+        type: string
+      docker_context:
+        description: "Docker build context"
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        description: "Dockerfile path"
+        required: false
+        type: string
+        default: "docker/Dockerfile"
+      target:
+        description: "Docker build target"
+        required: false
+        type: string
+      version:
+        description: "Version tag"
+        required: false
+        type: string
+        default: "nightly"
+      registry:
+        description: "Container registry"
+        required: false
+        type: string
+        default: "ghcr.io"
+      push:
+        description: "Whether to push the image"
+        required: false
+        type: boolean
+        default: true
+      cache:
+        description: "Whether to use build cache"
+        required: false
+        type: boolean
+        default: true
+      platforms:
+        description: "Target platforms"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      # image:
+      #   description: "Full image reference"
+      #   value: ${{ steps.image.outputs.digest }}
+      # tags:
+      #   description: "Generated tags"
+      #   value: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        if: ${{ inputs.cache }}
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: ${{ inputs.platforms }}
+
+      - name: Set up Docker BuildKit cache
+        if: ${{ inputs.cache }}
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ inputs.docker_context }}-${{ hashFiles(format('docker/**/*', '**/Dockerfile*')) }}
+
+      - name: Log in to Container Registry
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_GITHUB_PAT }}
+      - name: Generate tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.registry }}/${{ github.repository_owner }}/${{ inputs.image_name }}
+          tags: |
+            type=ref,event=branch,suffix=-{{date '.YYYYMMDD-HHMMSS'}}
+            type=ref,event=tag,suffix=-{{date '.YYYYMMDD-HHMMSS'}}
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != 'nightly' }}
+            type=raw,value=latest,enable=${{ inputs.version == 'nightly' }}
+          labels: |
+            org.opencontainers.image.title=MockJ-Go
+            org.opencontainers.image.description=Create temporary JSON endpoints instantly
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}/tree/${{ github.sha }}
+            org.opencontainers.image.version=${{ inputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push Docker image
+        id: image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.docker_context }}
+          file: ${{ inputs.dockerfile }}
+          target: ${{ inputs.target }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SERVER_VERSION=${{ inputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            GIT_SHA=${{ github.sha }}
+            GIT_REF=${{ github.ref }}
+          cache-from: ${{ inputs.cache == 'true' && 'type=gha' || '' }}
+          cache-to: ${{ inputs.cache == 'true' && 'type=gha,mode=max' || '' }}
+
+  scan:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ inputs.push == 'true' }}
+
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  sign:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ inputs.push == 'true' && github.event_name == 'release' }}
+
+    steps:
+      - name: Sign container image
+        uses: sigstore/fulcio@v2
+        with:
+          image: ${{ needs.build.outputs.image }}
+
+      - name: Upload signature
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-signature
+          path: signature.json

@@ -1,0 +1,79 @@
+name: Automated Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          # Extract version from git tag (v1.0.0 -> 1.0.0)
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Create changelog
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          includeInvalidCommits: true
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: MockJ-Go ${{ steps.version.outputs.version }}
+          draft: true
+          body: ${{ steps.changelog.outputs.changes }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-push:
+    needs: create-release
+    uses: ./.github/workflows/docker-reusable.yml
+    with:
+      image_name: mockj
+      docker_context: .
+      dockerfile: docker/Dockerfile
+      version: ${{ needs.create-release.outputs.version }}
+      platforms: linux/amd64,linux/arm64
+      push: true
+      cache: true
+    secrets: inherit
+
+  test-release:
+    needs: build-and-push
+    uses: ./.github/workflows/test-docker.yml
+    with:
+      image_ref: ghcr.io/${{ github.repository_owner }}/mockj-go:${{ needs.create-release.outputs.version }}
+      version: ${{ needs.create-release.outputs.version }}
+
+  announce:
+    needs: [create-release, build-and-push, test-release]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Prepare announcement
+        id: announce
+        run: |
+          if [ "${{ needs.build-and-push.result }}" = "success" ] && [ "${{ needs.test-release.result }}" = "success" ]; then
+            echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+            echo "message=MockJ-Go ${{ needs.create-release.outputs.version }} has been successfully released and tested!" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "message=Release ${{ needs.create-release.outputs.version }} encountered issues during build or testing." >> $GITHUB_OUTPUT
+          fi
