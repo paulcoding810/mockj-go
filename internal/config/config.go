@@ -45,7 +45,7 @@ func Load() (*Config, error) {
 			IdleTimeout:  getEnvAsDuration("SERVER_IDLE_TIMEOUT", 60*time.Second),
 		},
 		Database: DatabaseConfig{
-			DataSourceName:  getEnv("DATABASE_PATH", "data/mockj.db"),
+			DataSourceName:  getEnv("DATABASE_URL", "data/mockj.db"),
 			MaxOpenConns:    getEnvAsInt("DATABASE_MAX_OPEN_CONNS", 25),
 			MaxIdleConns:    getEnvAsInt("DATABASE_MAX_IDLE_CONNS", 25),
 			ConnMaxLifetime: getEnvAsDuration("DATABASE_CONN_MAX_LIFETIME", 5*time.Minute),

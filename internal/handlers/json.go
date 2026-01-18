@@ -69,6 +69,11 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Expires != nil && req.Expires.After(time.Now().AddDate(1, 0, 0)) {
+		h.writeError(w, http.StatusBadRequest, "invalid_expires", "Expiration time must be less than 1 year from now")
+		return
+	}
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mockj-go:
@@ -14,11 +14,11 @@ services:
       - SERVER_READ_TIMEOUT=30s
       - SERVER_WRITE_TIMEOUT=30s
       - SERVER_IDLE_TIMEOUT=60s
-      
+
       # Database configuration
       - DATABASE_PATH=/app/data/mockj.db
       - DATABASE_CLEANUP_INTERVAL=1h
-      
+
       # Rate limiting configuration
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_REQUESTS=100
@@ -30,7 +30,15 @@ services:
       # - ./config:/app/config
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
