@@ -79,7 +79,7 @@ const RecentsBox = ({ addToast }) => {
   };
 
   const handleOpenApi = (id) => {
-    window.open(`/api/json/${id}`, "_blank");
+    window.open(`/api/json/${id}/content`, "_blank");
   };
 
   if (loading) {

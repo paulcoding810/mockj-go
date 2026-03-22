@@ -116,7 +116,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
         password,
         expiresIn,
       );
-      const endpointUrl = `${window.location.origin}/api/json/${response.data.id}`;
+      const endpointUrl = `${window.location.origin}/api/json/${response.data.id}/content`;
       const viewUrl = `${window.location.origin}/${response.data.id}`;
 
       const endpointData = {
@@ -131,6 +131,8 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
       StorageHelper.saveRecentEndpoint(endpointData);
 
       addToast("JSON endpoint created successfully!", "success");
+
+      window.open(viewUrl, "_blank");
     } catch (error) {
       addToast(error.message || "Failed to create endpoint", "error");
     } finally {
@@ -352,7 +354,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                         <IconButton
                           onClick={() =>
                             copyToClipboard(
-                              `${window.location.origin}/api/json/${endpointData.id}`,
+                              `${window.location.origin}/api/json/${endpointData.id}/content`,
                               "API URL",
                             )
                           }
@@ -515,7 +517,14 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                       sx={{ mb: 2 }}
                     />
 
-                    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 2,
+                        mb: 2,
+                        alignItems: "center",
+                      }}
+                    >
                       <Button
                         variant="outlined"
                         startIcon={<FormatAlignLeft />}
@@ -652,7 +661,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
   // Create Mode (default)
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ pb: 3 }}>
       <Grid container spacing={3}>
         {/* Create Form */}
         <Grid item xs={12} md={endpoint ? 6 : 12}>

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,11 +52,27 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	// Static files handler - serve only from web/dist
-	fileServer := http.FileServer(http.Dir("./web/dist"))
+	// SPA fallback handler
+	spaHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := "./web/dist" + r.URL.Path
 
-	// Static files (web frontend)
-	mux.Handle("/", fileServer)
+		// Check if the requested file exists
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			// For API routes or non-existent paths, serve index.html for SPA
+			if !strings.HasPrefix(r.URL.Path, "/api/") {
+				http.ServeFile(w, r, "./web/dist/index.html")
+				return
+			}
+			http.NotFound(w, r)
+			return
+		}
+
+		// Serve the requested file
+		http.FileServer(http.Dir("./web/dist")).ServeHTTP(w, r)
+	})
+
+	// Static files (web frontend) with SPA fallback
+	mux.Handle("/", spaHandler)
 
 	// Apply middleware
 	handler := middleware.Logging(mux)
