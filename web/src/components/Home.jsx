@@ -20,9 +20,6 @@ import {
 import {
   ContentPaste,
   FormatAlignLeft,
-  Edit,
-  Delete,
-  Close,
   Visibility,
 } from "@mui/icons-material";
 import MockJGoClient from "../services/api.js";
@@ -35,7 +32,6 @@ import {
 
 export default function Home({ addToast, initialId = "", viewMode = false }) {
   const [jsonContent, setJsonContent] = useState("");
-  const [password, setPassword] = useState("");
   const [expiresIn, setExpiresIn] = useState("720");
   const [endpoint, setEndpoint] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -46,22 +42,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
   const [endpointData, setEndpointData] = useState(null);
   const [endpointLoading, setEndpointLoading] = useState(false);
   const [endpointError, setEndpointError] = useState(null);
-  const [showUpdate, setShowUpdate] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-
-  // Update form states
-  const [updateJson, setUpdateJson] = useState("");
-  const [updatePassword, setUpdatePassword] = useState("");
-  const [updateExpiresIn, setUpdateExpiresIn] = useState("720");
-  const [updateValidation, setUpdateValidation] = useState({
-    valid: false,
-    error: null,
-  });
-  const [updateLoading, setUpdateLoading] = useState(false);
-
-  // Delete form states
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const client = new MockJGoClient();
 
@@ -71,27 +51,12 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     return result.valid;
   };
 
-  const validateUpdateJson = (value) => {
-    const result = JsonHelper.validate(value);
-    setUpdateValidation(result);
-    return result.valid;
-  };
-
   const handleJsonChange = (value) => {
     setJsonContent(value);
     if (value.trim()) {
       validateJson(value);
     } else {
       setValidation({ valid: false, error: null });
-    }
-  };
-
-  const handleUpdateJsonChange = (value) => {
-    setUpdateJson(value);
-    if (value.trim()) {
-      validateUpdateJson(value);
-    } else {
-      setUpdateValidation({ valid: false, error: null });
     }
   };
 
@@ -111,11 +76,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     setLoading(true);
 
     try {
-      const response = await client.createJson(
-        jsonContent,
-        password,
-        expiresIn,
-      );
+      const response = await client.createJson(jsonContent, expiresIn);
       const endpointUrl = `${window.location.origin}/api/json/${response.data.id}/content`;
       const viewUrl = `${window.location.origin}/${response.data.id}`;
 
@@ -153,8 +114,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     try {
       const response = await client.getJson(id.trim());
       setEndpointData(response.data);
-      setUpdateJson(response.data.json);
-      setUpdateValidation({ valid: true, error: null });
 
       // Update URL without page reload
       window.history.pushState({}, "", `/${id}`);
@@ -166,80 +125,10 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     }
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-
-    if (!updateJson.trim() || !updateValidation.valid) {
-      addToast("Please enter valid JSON", "error");
-      return;
-    }
-
-    if (!updatePassword) {
-      addToast("Password is required for updates", "error");
-      return;
-    }
-
-    if (!endpointData) return;
-
-    setUpdateLoading(true);
-
-    try {
-      await client.updateJson(
-        endpointData.id,
-        updateJson,
-        updatePassword,
-        updateExpiresIn,
-      );
-      await loadEndpoint(endpointData.id); // Reload endpoint data
-      setShowUpdate(false);
-      setUpdatePassword("");
-      addToast("Endpoint updated successfully!", "success");
-    } catch (error) {
-      addToast(error.message || "Failed to update endpoint", "error");
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
-  const handleDelete = async (e) => {
-    e.preventDefault();
-
-    if (!deletePassword) {
-      addToast("Password is required for deletion", "error");
-      return;
-    }
-
-    if (!endpointData) return;
-
-    setDeleteLoading(true);
-
-    try {
-      await client.deleteJson(endpointData.id, deletePassword);
-      addToast("Endpoint deleted successfully!", "success");
-
-      // Reset form after successful deletion
-      setEndpointData(null);
-      setViewId("");
-      setDeletePassword("");
-      setShowDelete(false);
-      window.history.pushState({}, "", "/");
-    } catch (error) {
-      addToast(error.message || "Failed to delete endpoint", "error");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   const formatJson = () => {
     const formatted = JsonHelper.format(jsonContent);
     setJsonContent(formatted);
     validateJson(formatted);
-  };
-
-  const formatUpdateJson = () => {
-    const formatted = JsonHelper.format(updateJson);
-    setUpdateJson(formatted);
-    validateUpdateJson(formatted);
   };
 
   const copyToClipboard = async (text, label) => {
@@ -262,7 +151,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
   const resetForm = () => {
     setJsonContent("");
-    setPassword("");
     setExpiresIn("720");
     setEndpoint(null);
     setValidation({ valid: false, error: null });
@@ -330,330 +218,125 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
         {/* Endpoint Content */}
         {endpointData && (
-          <>
-            <Grid container spacing={3}>
-              {/* Endpoint Info */}
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5" gutterBottom>
-                      Endpoint Information
+          <Grid container spacing={3}>
+            {/* Endpoint Info */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h5" gutterBottom>
+                    Endpoint Information
+                  </Typography>
+
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      API Endpoint URL
                     </Typography>
-
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        API Endpoint URL
-                      </Typography>
-                      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                        <TextField
-                          fullWidth
-                          value={`${window.location.origin}/api/json/${endpointData.id}`}
-                          InputProps={{ readOnly: true }}
-                          size="small"
-                        />
-                        <IconButton
-                          onClick={() =>
-                            copyToClipboard(
-                              `${window.location.origin}/api/json/${endpointData.id}/content`,
-                              "API URL",
-                            )
-                          }
-                        >
-                          <ContentPaste />
-                        </IconButton>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Endpoint Details
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 1,
-                        }}
-                      >
-                        <Typography variant="body2">
-                          <strong>ID:</strong> {endpointData.id}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Created:</strong>{" "}
-                          {DateHelper.formatDateTime(endpointData.createdAt)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Modified:</strong>{" "}
-                          {DateHelper.formatDateTime(endpointData.modifiedAt)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Expires:</strong>{" "}
-                          {DateHelper.formatDateTime(endpointData.expires)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Status:</strong>
-                          <Chip
-                            label={DateHelper.formatRelative(
-                              endpointData.expires,
-                            )}
-                            color={
-                              DateHelper.formatRelative(
-                                endpointData.expires,
-                              ) === "Expired"
-                                ? "error"
-                                : "success"
-                            }
-                            size="small"
-                            sx={{ ml: 1 }}
-                          />
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      <Button
-                        variant="outlined"
-                        startIcon={<Visibility />}
-                        onClick={viewRawJson}
-                      >
-                        View Raw JSON
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        startIcon={<Edit />}
-                        onClick={() => setShowUpdate(true)}
-                        disabled={
-                          DateHelper.formatRelative(endpointData.expires) ===
-                          "Expired"
-                        }
-                      >
-                        Update
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<Delete />}
-                        onClick={() => setShowDelete(true)}
-                        disabled={
-                          DateHelper.formatRelative(endpointData.expires) ===
-                          "Expired"
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* JSON Content */}
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5" gutterBottom>
-                      JSON Content
-                    </Typography>
-
-                    <Box className="json-display" sx={{ mb: 2, p: 2 }}>
-                      <pre>
-                        {JsonHelper.formatForDisplay(endpointData.json)}
-                      </pre>
-                    </Box>
-
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        variant="outlined"
+                    <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        value={`${window.location.origin}/api/json/${endpointData.id}/content`}
+                        InputProps={{ readOnly: true }}
                         size="small"
+                      />
+                      <IconButton
                         onClick={() =>
                           copyToClipboard(
-                            JsonHelper.formatForDisplay(endpointData.json),
-                            "JSON",
+                            `${window.location.origin}/api/json/${endpointData.id}/content`,
+                            "API URL",
                           )
                         }
                       >
-                        <ContentPaste sx={{ mr: 1 }} />
-                        Copy JSON
-                      </Button>
+                        <ContentPaste />
+                      </IconButton>
                     </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-
-            {/* Update Form */}
-            {showUpdate && (
-              <Card sx={{ mt: 3 }}>
-                <CardContent>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 2,
-                    }}
-                  >
-                    <Typography variant="h5">Update JSON Endpoint</Typography>
-                    <IconButton onClick={() => setShowUpdate(false)}>
-                      <Close />
-                    </IconButton>
                   </Box>
 
-                  <Box component="form" onSubmit={handleUpdate}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={8}
-                      label="New JSON Content"
-                      value={updateJson}
-                      onChange={(e) => handleUpdateJsonChange(e.target.value)}
-                      error={
-                        !updateValidation.valid &&
-                        updateValidation.error !== null
-                      }
-                      helperText={
-                        updateValidation.error || "Enter valid JSON data"
-                      }
-                      className="json-editor"
-                      sx={{ mb: 2 }}
-                    />
-
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Endpoint Details
+                    </Typography>
                     <Box
                       sx={{
                         display: "flex",
-                        gap: 2,
-                        mb: 2,
-                        alignItems: "center",
+                        flexDirection: "column",
+                        gap: 1,
                       }}
                     >
-                      <Button
-                        variant="outlined"
-                        startIcon={<FormatAlignLeft />}
-                        onClick={formatUpdateJson}
-                        disabled={!updateJson.trim()}
-                      >
-                        Format JSON
-                      </Button>
-
-                      {updateJson.trim() && updateValidation.valid && (
+                      <Typography variant="body2">
+                        <strong>ID:</strong> {endpointData.id}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Created:</strong>{" "}
+                        {DateHelper.formatDateTime(endpointData.createdAt)}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Expires:</strong>{" "}
+                        {DateHelper.formatDateTime(endpointData.expires)}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Status:</strong>
                         <Chip
-                          label="✓ Valid JSON"
-                          color="success"
+                          label={DateHelper.formatRelative(
+                            endpointData.expires,
+                          )}
+                          color={
+                            DateHelper.formatRelative(
+                              endpointData.expires,
+                            ) === "Expired"
+                              ? "error"
+                              : "success"
+                          }
                           size="small"
+                          sx={{ ml: 1 }}
                         />
-                      )}
+                      </Typography>
                     </Box>
+                  </Box>
 
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          type="password"
-                          label="Current Password"
-                          value={updatePassword}
-                          onChange={(e) => setUpdatePassword(e.target.value)}
-                          helperText="Required to update this endpoint"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth>
-                          <InputLabel>Expires In</InputLabel>
-                          <Select
-                            value={updateExpiresIn}
-                            onChange={(e) => setUpdateExpiresIn(e.target.value)}
-                            label="Expires In"
-                          >
-                            <MenuItem value="1">1 hour</MenuItem>
-                            <MenuItem value="24">1 day</MenuItem>
-                            <MenuItem value="168">1 week</MenuItem>
-                            <MenuItem value="720">30 days</MenuItem>
-                            <MenuItem value="1440">60 days</MenuItem>
-                            <MenuItem value="4320">180 days</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    </Grid>
-
-                    <Box sx={{ display: "flex", gap: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setShowUpdate(false)}
-                        disabled={updateLoading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={
-                          updateLoading ||
-                          !updateJson.trim() ||
-                          !updateValidation.valid
-                        }
-                      >
-                        {updateLoading ? "Updating..." : "Update Endpoint"}
-                      </Button>
-                    </Box>
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Visibility />}
+                      onClick={viewRawJson}
+                    >
+                      View Raw JSON
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
-            )}
+            </Grid>
 
-            {/* Delete Confirmation */}
-            {showDelete && (
-              <Card sx={{ mt: 3 }}>
+            {/* JSON Content */}
+            <Grid item xs={12} md={6}>
+              <Card>
                 <CardContent>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 2,
-                    }}
-                  >
-                    <Typography variant="h5">Delete JSON Endpoint</Typography>
-                    <IconButton onClick={() => setShowDelete(false)}>
-                      <Close />
-                    </IconButton>
+                  <Typography variant="h5" gutterBottom>
+                    JSON Content
+                  </Typography>
+
+                  <Box className="json-display" sx={{ mb: 2, p: 2 }}>
+                    <pre>{JsonHelper.formatForDisplay(endpointData.json)}</pre>
                   </Box>
 
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    ⚠️ This action cannot be undone. The endpoint will be
-                    permanently deleted.
-                  </Alert>
-
-                  <Box component="form" onSubmit={handleDelete}>
-                    <TextField
-                      fullWidth
-                      type="password"
-                      label="Password"
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      helperText="Required to delete this endpoint"
-                      sx={{ mb: 2 }}
-                    />
-
-                    <Box sx={{ display: "flex", gap: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setShowDelete(false)}
-                        disabled={deleteLoading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        color="error"
-                        disabled={deleteLoading}
-                      >
-                        {deleteLoading ? "Deleting..." : "Delete Endpoint"}
-                      </Button>
-                    </Box>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() =>
+                        copyToClipboard(
+                          JsonHelper.formatForDisplay(endpointData.json),
+                          "JSON",
+                        )
+                      }
+                    >
+                      <ContentPaste sx={{ mr: 1 }} />
+                      Copy JSON
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
-            )}
-          </>
+            </Grid>
+          </Grid>
         )}
       </Container>
     );
@@ -701,35 +384,21 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                   )}
                 </Box>
 
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      type="password"
-                      label="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      helperText="Required for updates/deletions"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Expires In</InputLabel>
-                      <Select
-                        value={expiresIn}
-                        onChange={(e) => setExpiresIn(e.target.value)}
-                        label="Expires In"
-                      >
-                        <MenuItem value="1">1 hour</MenuItem>
-                        <MenuItem value="24">1 day</MenuItem>
-                        <MenuItem value="168">1 week</MenuItem>
-                        <MenuItem value="720">30 days</MenuItem>
-                        <MenuItem value="1440">60 days</MenuItem>
-                        <MenuItem value="4320">180 days</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                </Grid>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Expires In</InputLabel>
+                  <Select
+                    value={expiresIn}
+                    onChange={(e) => setExpiresIn(e.target.value)}
+                    label="Expires In"
+                  >
+                    <MenuItem value="1">1 hour</MenuItem>
+                    <MenuItem value="24">1 day</MenuItem>
+                    <MenuItem value="168">1 week</MenuItem>
+                    <MenuItem value="720">30 days</MenuItem>
+                    <MenuItem value="1440">60 days</MenuItem>
+                    <MenuItem value="4320">180 days</MenuItem>
+                  </Select>
+                </FormControl>
 
                 <Button
                   type="submit"
@@ -785,7 +454,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" gutterBottom>
-                    View & Modify URL
+                    View URL
                   </Typography>
                   <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
                     <TextField
@@ -809,9 +478,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                   <Typography variant="subtitle2" gutterBottom>
                     Endpoint Details
                   </Typography>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-                  >
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <Typography variant="body2">
                       <strong>ID:</strong> {endpoint.id}
                     </Typography>
@@ -832,7 +499,7 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                   target="_blank"
                   fullWidth
                 >
-                  View & Modify Endpoint
+                  View Endpoint
                 </Button>
               </CardContent>
             </Card>

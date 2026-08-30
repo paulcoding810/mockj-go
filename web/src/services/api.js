@@ -31,7 +31,7 @@ class MockJGoClient {
     }
   }
 
-  async createJson(jsonContent, password, expiresInHours = 720) {
+  async createJson(jsonContent, expiresInHours = 720) {
     const expires = new Date();
     expires.setHours(expires.getHours() + parseInt(expiresInHours));
 
@@ -39,7 +39,6 @@ class MockJGoClient {
       method: "POST",
       body: JSON.stringify({
         json: jsonContent,
-        password: password || undefined,
         expires: expires.toISOString(),
       }),
     });
@@ -47,29 +46,6 @@ class MockJGoClient {
 
   async getJson(id) {
     return this.request(`/api/json/${id}`);
-  }
-
-  async updateJson(id, jsonContent, password, expiresInHours = 720) {
-    const expires = new Date();
-    expires.setHours(expires.getHours() + parseInt(expiresInHours));
-
-    return this.request(`/api/json/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        json: jsonContent,
-        password: password,
-        expires: expires.toISOString(),
-      }),
-    });
-  }
-
-  async deleteJson(id, password) {
-    return this.request(`/api/json/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify({
-        password: password,
-      }),
-    });
   }
 }
 

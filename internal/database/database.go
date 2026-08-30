@@ -32,7 +32,59 @@ func NewDatabase(dataSourceName string) (*Database, error) {
 		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}
 
+	if err = database.migrate(); err != nil {
+		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	}
+
 	return database, nil
+}
+
+// migrate applies one-off schema fixes to bring an existing database up to the
+// current schema. Safe to run on every startup and on a fresh DB.
+func (d *Database) migrate() error {
+	// The password column was removed. Drop it from pre-existing databases so
+	// inserts (which no longer supply a password) don't hit the leftover
+	// NOT NULL constraint.
+	has, err := d.columnExists("json", "password")
+	if err != nil {
+		return err
+	}
+	if has {
+		if _, err := d.db.Exec(`ALTER TABLE json DROP COLUMN password`); err != nil {
+			return fmt.Errorf("failed to drop legacy password column: %w", err)
+		}
+		log.Println("Migrated database: dropped legacy password column")
+	}
+	return nil
+}
+
+// columnExists reports whether the given table has the given column. The table
+// name is a hard-coded constant, not user input, so string interpolation into
+// the PRAGMA (which cannot be parameterized) is safe.
+func (d *Database) columnExists(table, column string) (bool, error) {
+	rows, err := d.db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			colType string
+			notNull int
+			dflt    sql.NullString
+			pk      int
+		)
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
 
 // createTables creates the necessary database tables
@@ -41,7 +93,6 @@ func (d *Database) createTables() error {
 	CREATE TABLE IF NOT EXISTS json (
 		id TEXT PRIMARY KEY,
 		json TEXT NOT NULL,
-		password TEXT NOT NULL,
 		created_at DATETIME NOT NULL,
 		modified_at DATETIME NOT NULL,
 		expires DATETIME NOT NULL
@@ -63,11 +114,11 @@ func (d *Database) Close() error {
 // CreateJSON inserts a new JSON entity
 func (d *Database) CreateJSON(json *models.JSON) error {
 	query := `
-	INSERT INTO json (id, json, password, created_at, modified_at, expires)
-	VALUES (?, ?, ?, ?, ?, ?)
+	INSERT INTO json (id, json, created_at, modified_at, expires)
+	VALUES (?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query, json.ID, json.Content, json.Password, json.CreatedAt, json.ModifiedAt, json.Expires)
+	_, err := d.db.Exec(query, json.ID, json.Content, json.CreatedAt, json.ModifiedAt, json.Expires)
 	return err
 }
 
@@ -83,83 +134,6 @@ func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	err := d.db.QueryRow(query, id, time.Now()).Scan(
 		&json.ID,
 		&json.Content,
-		&json.CreatedAt,
-		&json.ModifiedAt,
-		&json.Expires,
-	)
-
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("json not found or expired")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get json: %w", err)
-	}
-
-	return json, nil
-}
-
-// UpdateJSON updates an existing JSON entity
-func (d *Database) UpdateJSON(json *models.JSON) error {
-	query := `
-	UPDATE json
-	SET json = ?, password = ?, modified_at = ?, expires = ?
-	WHERE id = ?
-	`
-
-	json.ModifiedAt = time.Now()
-
-	result, err := d.db.Exec(query, json.Content, json.Password, json.ModifiedAt, json.Expires, json.ID)
-	if err != nil {
-		return fmt.Errorf("failed to update json: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("json not found")
-	}
-
-	return nil
-}
-
-// DeleteJSON deletes a JSON entity by ID
-func (d *Database) DeleteJSON(id string) error {
-	query := `DELETE FROM json WHERE id = ?`
-
-	result, err := d.db.Exec(query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete json: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("json not found")
-	}
-
-	return nil
-}
-
-// GetJSONWithPassword retrieves a JSON entity by ID including the password
-func (d *Database) GetJSONWithPassword(id string) (*models.JSON, error) {
-	query := `
-	SELECT id, json, password, created_at, modified_at, expires
-	FROM json
-	WHERE id = ? AND expires > ?
-	`
-
-	json := &models.JSON{}
-	err := d.db.QueryRow(query, id, time.Now()).Scan(
-		&json.ID,
-		&json.Content,
-		&json.Password,
 		&json.CreatedAt,
 		&json.ModifiedAt,
 		&json.Expires,

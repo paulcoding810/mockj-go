@@ -1,18 +1,18 @@
 # MockJ-Go
 
-A Go-based JSON mock API server inspired by [MockJ](https://github.com/paulcoding810/mockj). Create and manage JSON mock endpoints quickly and easily with REST API instead of RPC.
+A Go-based JSON mock API server inspired by [MockJ](https://github.com/paulcoding810/mockj). Create shareable, read-only JSON mock endpoints quickly and easily over a simple REST API.
 
 ## Features
 
-- 🚀 **REST API** - Clean RESTful endpoints for CRUD operations
-- 🌐 **Web Interface** - Modern web frontend for easy endpoint management
+- 🚀 **REST API** - Create and read JSON mock endpoints
+- 🌐 **Web Interface** - Modern web frontend for creating and viewing endpoints
 - 💾 **SQLite Database** - Lightweight, file-based database
-- 🔐 **Password Protection** - Secure edit/delete operations with password authentication
+- 🔒 **Immutable Endpoints** - Once created, endpoints are read-only; no edits, no surprises
+- ⏰ **Auto Expiry** - Every endpoint expires and is cleaned up automatically
 - 🛡️ **CORS Support** - Cross-origin resource sharing enabled
 - 📝 **Request Logging** - Detailed request/response logging
 - ⚡ **Rate Limiting** - Configurable rate limiting per client
 - 🐳 **Docker Support** - Containerized deployment with web frontend
-- ⏰ **Auto Cleanup** - Automatic cleanup of expired JSON records
 - 🔧 **Configurable** - Environment-based configuration
 
 ## Quick Start
@@ -48,6 +48,8 @@ go build -o bin/server ./cmd/server
 
 ## API Endpoints
 
+Endpoints are **immutable**: you create one, then read it back until it expires. There are no update or delete operations.
+
 ### Create JSON
 
 ```http
@@ -56,41 +58,24 @@ Content-Type: application/json
 
 {
   "json": "{\"name\": \"John\", \"age\": 30}",
-  "password": "your-password",
-  "expires": "2024-12-31T23:59:59Z"
+  "expires": "2025-12-31T23:59:59Z"
 }
 ```
 
-### Get JSON
+`expires` is optional and must be between now and one year from now. When omitted, the endpoint defaults to 60 days. Request bodies are capped at 1 MiB.
+
+### Get JSON (metadata + content)
 
 ```http
 GET /api/json/{id}
 ```
 
-_(No password required for read operations)_
+### Get raw JSON content
 
-### Update JSON
-
-```http
-PUT /api/json/{id}
-Content-Type: application/json
-
-{
-  "json": "{\"name\": \"Jane\", \"age\": 25}",
-  "password": "your-password",
-  "expires": "2024-12-31T23:59:59Z"
-}
-```
-
-### Delete JSON
+Returns just the stored content with `Content-Type: application/json` — this is the URL you point your app at.
 
 ```http
-DELETE /api/json/{id}
-Content-Type: application/json
-
-{
-  "password": "your-password"
-}
+GET /api/json/{id}/content
 ```
 
 ### Health Check
@@ -108,9 +93,9 @@ GET /health
   "data": {
     "id": "uuid-string",
     "json": "{\"name\": \"John\"}",
-    "createdAt": "2024-01-01T00:00:00Z",
-    "modifiedAt": "2024-01-01T00:00:00Z",
-    "expires": "2024-03-01T00:00:00Z"
+    "createdAt": "2025-01-01T00:00:00Z",
+    "modifiedAt": "2025-01-01T00:00:00Z",
+    "expires": "2025-03-01T00:00:00Z"
   },
   "message": "JSON created successfully"
 }
@@ -139,7 +124,7 @@ The application can be configured using environment variables:
 
 ### Database Configuration
 
-- `DATABASE_URL` - Database file path (default: "./mockj.db")
+- `DATABASE_URL` - Database file path (default: "data/mockj.db")
 - `DATABASE_MAX_OPEN_CONNS` - Max open connections (default: 25)
 - `DATABASE_MAX_IDLE_CONNS` - Max idle connections (default: 25)
 - `DATABASE_CONN_MAX_LIFETIME` - Connection max lifetime (default: 5m)
@@ -164,14 +149,11 @@ mockj-go/
 │   ├── middleware/      # HTTP middleware
 │   └── models/          # Data models
 ├── pkg/
-│   ├── types/           # Public type definitions
 │   └── utils/           # Utility functions
-├── web/                 # Web frontend
-│   ├── index.html       # Main HTML page
-│   ├── styles.css       # CSS styling
-│   └── script.js        # JavaScript application
-├── Dockerfile
-├── docker-compose.yml
+├── web/                 # React web frontend (Vite)
+│   ├── src/             # Application source
+│   └── index.html       # Entry HTML
+├── docker/              # Dockerfile & compose
 ├── go.mod
 └── README.md
 ```
@@ -180,8 +162,9 @@ mockj-go/
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.25 or later
 - SQLite3
+- Node.js (for building the web frontend)
 
 ### Setup
 
@@ -208,7 +191,7 @@ go test -cover ./...
 
 ## Web Interface
 
-The application includes a modern web frontend that makes it easy to manage JSON endpoints without using curl commands.
+The application includes a modern React frontend that makes it easy to create and view JSON endpoints without using curl commands.
 
 ### Accessing the Web Interface
 
@@ -217,15 +200,13 @@ The application includes a modern web frontend that makes it easy to manage JSON
 3. Use the web interface to:
    - Create JSON endpoints with the built-in editor
    - View existing endpoints by ID
-   - Update endpoints with password protection
-   - Delete endpoints securely
    - Copy endpoint URLs easily
 
 ### Features
 
 - **JSON Editor** with syntax validation and formatting
-- **Password Protection** for secure operations
 - **URL Sharing** with copy-to-clipboard functionality
+- **Recent Endpoints** stored locally for quick access
 - **Responsive Design** that works on all devices
 - **Real-time Validation** of JSON content
 - **Toast Notifications** for user feedback
@@ -236,7 +217,7 @@ The application includes a modern web frontend that makes it easy to manage JSON
 
 1. Visit `http://localhost:8080`
 2. Enter your JSON content in the editor
-3. Set optional password and expiration time
+3. Set an expiration time
 4. Click "Create Endpoint"
 5. Copy the generated URL for sharing
 
@@ -249,64 +230,39 @@ curl -X POST http://localhost:8080/api/json \
   -H "Content-Type: application/json" \
   -d '{
     "json": "{\"message\": \"Hello, World!\", \"status\": 200}",
-    "password": "my-secret-password",
-    "expires": "2024-12-31T23:59:59Z"
+    "expires": "2025-12-31T23:59:59Z"
   }'
 ```
 
-#### Retrieve the JSON
+#### Retrieve the endpoint metadata
 
 ```bash
 curl http://localhost:8080/api/json/{your-uuid}
 ```
 
-#### Update the JSON (requires password)
+#### Retrieve the raw JSON content
 
 ```bash
-curl -X PUT http://localhost:8080/api/json/{your-uuid} \
-  -H "Content-Type: application/json" \
-  -d '{
-    "json": "{\"message\": \"Updated message\", \"status\": 200}",
-    "password": "my-secret-password"
-  }'
+curl http://localhost:8080/api/json/{your-uuid}/content
 ```
 
-#### Delete the JSON (requires password)
+## Design Notes
 
-```bash
-curl -X DELETE http://localhost:8080/api/json/{your-uuid} \
-  -H "Content-Type: application/json" \
-  -d '{
-    "password": "my-secret-password"
-  }'
-```
-
-## Security
-
-### Password Protection
-
-- **Required**: Password is required when creating JSON entries
-- **Secure Storage**: Passwords are hashed using bcrypt before storage
-- **Authentication**: Password required for update and delete operations
-- **Privacy**: Passwords are never included in API responses
-- **Public Reads**: Get operations work without password (public access)
-
-### Password Hashing
-
-All passwords are securely hashed using bcrypt with the default cost factor. The original passwords are never stored in the database.
+- **Immutable & ephemeral**: Endpoints cannot be edited or deleted through the API. Each one carries an expiry (default 60 days, max 1 year) and is removed automatically by a background cleanup routine once expired.
+- **Raw content safety**: The `/content` endpoint sends `X-Content-Type-Options: nosniff` so stored content cannot be MIME-sniffed and executed as HTML by a browser.
+- **Rate limiting**: A per-client fixed-window limiter guards the API; its state is concurrency-safe and bounded so it cannot leak memory under load.
 
 ## Comparison with Original MockJ
 
-| Feature             | MockJ (Node.js)    | MockJ-Go         |
-| ------------------- | ------------------ | ---------------- |
-| Language            | TypeScript/Node.js | Go               |
-| API                 | tRPC               | REST API         |
-| Database            | SQLite             | SQLite           |
-| Framework           | Next.js            | Standard Library |
-| Password Protection | No                 | Yes              |
-| Bundle Size         | ~50MB              | ~15MB            |
-| Memory Usage        | ~100MB             | ~30MB            |
-| Startup Time        | ~2s                | ~0.1s            |
+| Feature      | MockJ (Node.js)    | MockJ-Go         |
+| ------------ | ------------------ | ---------------- |
+| Language     | TypeScript/Node.js | Go               |
+| API          | tRPC               | REST API         |
+| Database     | SQLite             | SQLite           |
+| Framework    | Next.js            | Standard Library |
+| Bundle Size  | ~50MB              | ~15MB            |
+| Memory Usage | ~100MB             | ~30MB            |
+| Startup Time | ~2s                | ~0.1s            |
 
 ## License
 

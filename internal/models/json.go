@@ -12,7 +12,6 @@ import (
 type JSON struct {
 	ID         string    `json:"id" db:"id"`
 	Content    string    `json:"json" db:"json"`
-	Password   string    `json:"-" db:"password"` // Never include password in JSON responses
 	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
 	ModifiedAt time.Time `json:"modifiedAt" db:"modified_at"`
 	Expires    time.Time `json:"expires" db:"expires"`
@@ -46,12 +45,11 @@ func (j *JSONData) Scan(value interface{}) error {
 }
 
 // NewJSON creates a new JSON entity with default values
-func NewJSON(content, password string) *JSON {
+func NewJSON(content string) *JSON {
 	now := time.Now()
 	return &JSON{
 		ID:         uuid.New().String(),
 		Content:    content,
-		Password:   password,
 		CreatedAt:  now,
 		ModifiedAt: now,
 		Expires:    now.AddDate(0, 0, 60), // Default 60 days

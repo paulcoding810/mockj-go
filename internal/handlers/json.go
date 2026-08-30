@@ -8,8 +8,6 @@ import (
 
 	"mockj-go/internal/database"
 	"mockj-go/internal/models"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // maxBodyBytes caps the size of a request body to prevent memory-exhaustion
@@ -26,16 +24,8 @@ func NewJSONHandler(db *database.Database) *JSONHandler {
 
 // CreateJSONRequest represents the request body for creating a JSON
 type CreateJSONRequest struct {
-	Content  string     `json:"json"`
-	Password string     `json:"password"`
-	Expires  *time.Time `json:"expires,omitempty"`
-}
-
-// UpdateJSONRequest represents the request body for updating a JSON
-type UpdateJSONRequest struct {
-	Content  *string    `json:"json,omitempty"`
-	Password string     `json:"password"`
-	Expires  *time.Time `json:"expires,omitempty"`
+	Content string     `json:"json"`
+	Expires *time.Time `json:"expires,omitempty"`
 }
 
 // ErrorResponse represents an error response
@@ -63,11 +53,6 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Password == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_password", "Password is required")
-		return
-	}
-
 	if req.Expires != nil && req.Expires.Before(time.Now()) {
 		h.writeError(w, http.StatusBadRequest, "invalid_expires", "Expiration time must be in the future")
 		return
@@ -78,14 +63,7 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "hash_error", "Failed to hash password")
-		return
-	}
-
-	jsonModel := models.NewJSON(req.Content, string(hashedPassword))
+	jsonModel := models.NewJSON(req.Content)
 	if req.Expires != nil {
 		jsonModel.Expires = *req.Expires
 	}
@@ -149,123 +127,6 @@ func (h *JSONHandler) GetJSONContent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(jsonModel.Content))
-}
-
-// UpdateJSON handles PUT /api/json/{id}
-func (h *JSONHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
-	id := extractIDFromPath(r.URL.Path)
-	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_id", "ID is required")
-		return
-	}
-
-	var req UpdateJSONRequest
-	if err := decodeBody(w, r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
-		return
-	}
-
-	if req.Password == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_password", "Password is required")
-		return
-	}
-
-	if req.Expires != nil && req.Expires.Before(time.Now()) {
-		h.writeError(w, http.StatusBadRequest, "invalid_expires", "Expiration time must be in the future")
-		return
-	}
-
-	// Get existing JSON with password
-	jsonModel, err := h.db.GetJSONWithPassword(id)
-	if err != nil {
-		if err.Error() == "json not found or expired" {
-			h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
-		} else {
-			h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to retrieve JSON")
-		}
-		return
-	}
-
-	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(jsonModel.Password), []byte(req.Password)); err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthorized", "Invalid password")
-		return
-	}
-
-	// Update fields if provided
-	if req.Content != nil {
-		jsonModel.Content = *req.Content
-	}
-	if req.Expires != nil {
-		jsonModel.Expires = *req.Expires
-	}
-
-	if err := h.db.UpdateJSON(jsonModel); err != nil {
-		h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to update JSON")
-		return
-	}
-
-	// Clear password from response before sending
-	jsonModel.Password = ""
-
-	h.writeJSON(w, http.StatusOK, SuccessResponse{
-		Data:    jsonModel,
-		Message: "JSON updated successfully",
-	})
-}
-
-// DeleteJSON handles DELETE /api/json/{id}
-func (h *JSONHandler) DeleteJSON(w http.ResponseWriter, r *http.Request) {
-	id := extractIDFromPath(r.URL.Path)
-	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_id", "ID is required")
-		return
-	}
-
-	// Parse request body to get password
-	var req struct {
-		Password string `json:"password"`
-	}
-
-	if err := decodeBody(w, r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
-		return
-	}
-
-	if req.Password == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_password", "Password is required")
-		return
-	}
-
-	// Get existing JSON with password
-	json, err := h.db.GetJSONWithPassword(id)
-	if err != nil {
-		if err.Error() == "json not found or expired" {
-			h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
-		} else {
-			h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to retrieve JSON")
-		}
-		return
-	}
-
-	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(json.Password), []byte(req.Password)); err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthorized", "Invalid password")
-		return
-	}
-
-	if err := h.db.DeleteJSON(id); err != nil {
-		if err.Error() == "json not found" {
-			h.writeError(w, http.StatusNotFound, "not_found", "JSON not found")
-		} else {
-			h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to delete JSON")
-		}
-		return
-	}
-
-	h.writeJSON(w, http.StatusOK, SuccessResponse{
-		Message: "JSON deleted successfully",
-	})
 }
 
 // writeJSON writes a JSON response

@@ -43,8 +43,6 @@ func main() {
 	mux.HandleFunc("POST /api/json", jsonHandler.CreateJSON)
 	mux.HandleFunc("GET /api/json/{id}", jsonHandler.GetJSON)
 	mux.HandleFunc("GET /api/json/{id}/content", jsonHandler.GetJSONContent)
-	mux.HandleFunc("PUT /api/json/{id}", jsonHandler.UpdateJSON)
-	mux.HandleFunc("DELETE /api/json/{id}", jsonHandler.DeleteJSON)
 
 	// Health check
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
