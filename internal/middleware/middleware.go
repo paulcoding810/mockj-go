@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"log"
+	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -52,39 +54,63 @@ func ContentType(next http.Handler) http.Handler {
 	})
 }
 
-// RateLimit middleware (simple implementation)
+// RateLimit middleware (simple fixed-window implementation).
+//
+// The client map is guarded by a mutex to avoid the fatal "concurrent map
+// writes" panic under concurrent traffic, and stale entries are evicted
+// periodically so the map cannot grow without bound (memory-exhaustion DoS).
 func RateLimit(requests int, window time.Duration) func(http.Handler) http.Handler {
 	type client struct {
 		requests int
 		window   time.Time
 	}
 
+	var mu sync.Mutex
 	clients := make(map[string]*client)
+
+	// Evict entries whose window has fully elapsed so the map size stays
+	// bounded by the number of recently-active clients.
+	go func() {
+		ticker := time.NewTicker(window)
+		defer ticker.Stop()
+		for range ticker.C {
+			mu.Lock()
+			now := time.Now()
+			for ip, c := range clients {
+				if now.Sub(c.window) > window {
+					delete(clients, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Key on the host only; RemoteAddr includes an ephemeral port,
+			// which would otherwise make every request look like a new client.
 			clientIP := r.RemoteAddr
-
-			c, exists := clients[clientIP]
-			if !exists {
-				clients[clientIP] = &client{requests: 1, window: time.Now()}
-				next.ServeHTTP(w, r)
-				return
+			if host, _, err := net.SplitHostPort(clientIP); err == nil {
+				clientIP = host
 			}
 
-			if time.Since(c.window) > window {
-				c.requests = 1
-				c.window = time.Now()
+			mu.Lock()
+			c, exists := clients[clientIP]
+			if !exists || time.Since(c.window) > window {
+				clients[clientIP] = &client{requests: 1, window: time.Now()}
+				mu.Unlock()
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			if c.requests >= requests {
+				mu.Unlock()
 				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
 
 			c.requests++
+			mu.Unlock()
 			next.ServeHTTP(w, r)
 		})
 	}

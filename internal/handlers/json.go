@@ -12,6 +12,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// maxBodyBytes caps the size of a request body to prevent memory-exhaustion
+// DoS from arbitrarily large payloads (1 MiB).
+const maxBodyBytes = 1 << 20
+
 type JSONHandler struct {
 	db *database.Database
 }
@@ -49,7 +53,7 @@ type SuccessResponse struct {
 // CreateJSON handles POST /api/json
 func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 	var req CreateJSONRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeBody(w, r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
 		return
 	}
@@ -138,8 +142,11 @@ func (h *JSONHandler) GetJSONContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set Content-Type to application/json and return the raw content
+	// Set Content-Type to application/json and return the raw content.
+	// nosniff prevents browsers from MIME-sniffing attacker-controlled
+	// content as HTML, which would enable stored XSS.
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(jsonModel.Content))
 }
@@ -153,7 +160,7 @@ func (h *JSONHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateJSONRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeBody(w, r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
 		return
 	}
@@ -220,7 +227,7 @@ func (h *JSONHandler) DeleteJSON(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeBody(w, r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON body")
 		return
 	}
@@ -274,6 +281,13 @@ func (h *JSONHandler) writeError(w http.ResponseWriter, status int, errType, mes
 		Error:   errType,
 		Message: message,
 	})
+}
+
+// decodeBody decodes a JSON request body into dst, enforcing a maximum body
+// size to guard against memory-exhaustion DoS from oversized payloads.
+func decodeBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	return json.NewDecoder(r.Body).Decode(dst)
 }
 
 // extractIDFromPath extracts the ID from the URL path
