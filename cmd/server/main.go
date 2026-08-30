@@ -92,7 +92,10 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on %s", cfg.ServerAddr())
+		// Emit the address as an OSC 8 terminal hyperlink so it's clickable.
+		// 0.0.0.0 isn't navigable in a browser, so point the link at localhost.
+		url := "http://" + strings.Replace(cfg.ServerAddr(), "0.0.0.0", "localhost", 1)
+		log.Printf("Starting server on \x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, url)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
