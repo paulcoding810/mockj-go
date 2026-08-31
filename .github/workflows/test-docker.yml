@@ -27,7 +27,7 @@ jobs:
         env:
           SERVER_HOST: 0.0.0.0
           SERVER_PORT: 8080
-          DATABASE_PATH: /app/data/mockj.db
+          DATABASE_URL: /app/data/mockj.db
           DATABASE_CLEANUP_INTERVAL: 1h
           RATE_LIMIT_ENABLED: true
           RATE_LIMIT_REQUESTS: 100
@@ -57,7 +57,7 @@ jobs:
           # Test creating a JSON endpoint
           create_response=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"data\", \"version\": \"${{ inputs.version }}\"}", "password":"test123"}' \
+            -d '{"json":"{\"test\": \"data\", \"version\": \"${{ inputs.version }}\"}"}' \
             http://localhost:8080/api/json)
 
           echo "Create response: $create_response"
@@ -79,7 +79,7 @@ jobs:
           # Get the ID from previous step (would need to pass between steps)
           id=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"retrieve\"}", "password":"test123"}' \
+            -d '{"json":"{\"test\": \"retrieve\"}"}' \
             http://localhost:8080/api/json | jq -r '.data.id')
 
           if [ -z "$id" ] || [ "$id" = "null" ]; then
@@ -92,61 +92,20 @@ jobs:
 
           # Check if response contains expected data
           if echo "$get_response" | jq -e '.data.json | contains("retrieve")' > /dev/null; then
-            echo "✅ JSON retrieval working"
+            echo "✅ JSON metadata retrieval working"
           else
-            echo "❌ JSON retrieval failed"
+            echo "❌ JSON metadata retrieval failed"
             exit 1
           fi
 
-      - name: Test JSON update
-        run: |
-          echo "📝 Testing JSON update..."
+          # Check the raw content endpoint returns the stored JSON verbatim
+          content_response=$(curl -s http://localhost:8080/api/json/$id/content)
+          echo "Content response: $content_response"
 
-          # Create endpoint for update test
-          id=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"original\"}", "password":"test123"}' \
-            http://localhost:8080/api/json | jq -r '.data.id')
-
-          # Update the endpoint
-          update_response=$(curl -s -X PUT \
-            -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"updated\"}", "password":"test123"}' \
-            http://localhost:8080/api/json/$id)
-
-          echo "Update response: $update_response"
-
-          # Verify update worked
-          if echo "$update_response" | jq -e '.data.json | contains("updated")' > /dev/null; then
-            echo "✅ JSON update working"
+          if echo "$content_response" | jq -e '.test == "retrieve"' > /dev/null; then
+            echo "✅ Raw content retrieval working"
           else
-            echo "❌ JSON update failed"
-            exit 1
-          fi
-
-      - name: Test JSON deletion
-        run: |
-          echo "🗑️ Testing JSON deletion..."
-
-          # Create endpoint for deletion test
-          id=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"delete\"}", "password":"test123"}' \
-            http://localhost:8080/api/json | jq -r '.data.id')
-
-          # Delete the endpoint
-          delete_response=$(curl -s -X DELETE \
-            -H "Content-Type: application/json" \
-            -d '{"password":"test123"}' \
-            http://localhost:8080/api/json/$id)
-
-          echo "Delete response: $delete_response"
-
-          # Verify deletion worked
-          if echo "$delete_response" | jq -e '.message | contains("deleted successfully")' > /dev/null; then
-            echo "✅ JSON deletion working"
-          else
-            echo "❌ JSON deletion failed"
+            echo "❌ Raw content retrieval failed"
             exit 1
           fi
 
@@ -157,7 +116,7 @@ jobs:
           # Create endpoint that expires in 1 hour
           id=$(curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d '{"json":"{\"test\": \"expire\"}", "password":"test123", "expires":"'$(date -u -d '+1 hour' +'%Y-%m-%dT%H:%M:%S.%3NZ')'"}' \
+            -d '{"json":"{\"test\": \"expire\"}", "expires":"'$(date -u -d '+1 hour' +'%Y-%m-%dT%H:%M:%S.%3NZ')'"}' \
             http://localhost:8080/api/json | jq -r '.data.id')
 
           if [ -z "$id" ] || [ "$id" = "null" ]; then
