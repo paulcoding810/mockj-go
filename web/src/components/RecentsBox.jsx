@@ -13,11 +13,11 @@ import {
   Tooltip,
   Divider,
   CardActions,
+  Link,
 } from "@mui/material";
 import {
   Delete,
   ContentCopy,
-  Visibility,
   Launch,
   ClearAll,
   Refresh,
@@ -74,12 +74,11 @@ const RecentsBox = ({ addToast }) => {
     addToast("All recent endpoints cleared", "success");
   };
 
-  const handleViewEndpoint = (id) => {
-    window.open(`/${id}`, "_blank");
-  };
+  // /raw/{id} is the raw JSON endpoint served by the backend.
+  const endpointUrl = (id) => `${window.location.origin}/raw/${id}`;
 
-  const handleOpenApi = (id) => {
-    window.open(`/api/json/${id}/content`, "_blank");
+  const handleOpen = (id) => {
+    window.open(`/raw/${id}`, "_blank");
   };
 
   if (loading) {
@@ -212,41 +211,6 @@ const RecentsBox = ({ addToast }) => {
                   )}
                 </Box>
 
-                <Box mb={2}>
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ flexGrow: 1 }}
-                    >
-                      API URL:
-                    </Typography>
-                    <Tooltip title="Copy API URL">
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          handleCopyUrl(endpoint.endpointUrl, "API")
-                        }
-                        sx={{ ml: 1 }}
-                      >
-                        <ContentCopy fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: "monospace",
-                      wordBreak: "break-all",
-                      backgroundColor: "grey.100",
-                      p: 1,
-                      borderRadius: 1,
-                    }}
-                  >
-                    {endpoint.endpointUrl}
-                  </Typography>
-                </Box>
-
                 <Box>
                   <Box display="flex" alignItems="center" mb={1}>
                     <Typography
@@ -254,21 +218,26 @@ const RecentsBox = ({ addToast }) => {
                       color="text.secondary"
                       sx={{ flexGrow: 1 }}
                     >
-                      View URL:
+                      Endpoint URL:
                     </Typography>
-                    <Tooltip title="Copy View URL">
+                    <Tooltip title="Copy URL">
                       <IconButton
                         size="small"
-                        onClick={() => handleCopyUrl(endpoint.viewUrl, "View")}
+                        onClick={() =>
+                          handleCopyUrl(endpointUrl(endpoint.id), "Endpoint")
+                        }
                         sx={{ ml: 1 }}
                       >
                         <ContentCopy fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  <Typography
-                    variant="body2"
+                  <Link
+                    href={`/raw/${endpoint.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     sx={{
+                      display: "block",
                       fontFamily: "monospace",
                       wordBreak: "break-all",
                       backgroundColor: "grey.100",
@@ -276,32 +245,21 @@ const RecentsBox = ({ addToast }) => {
                       borderRadius: 1,
                     }}
                   >
-                    {endpoint.viewUrl}
-                  </Typography>
+                    {endpointUrl(endpoint.id)}
+                  </Link>
                 </Box>
               </CardContent>
 
               <CardActions sx={{ pt: 0, px: 2, pb: 2 }}>
-                <Box display="flex" gap={1} width="100%">
-                  <Button
-                    size="small"
-                    startIcon={<Visibility />}
-                    onClick={() => handleViewEndpoint(endpoint.id)}
-                    variant="outlined"
-                    sx={{ flex: 1 }}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    size="small"
-                    startIcon={<Launch />}
-                    onClick={() => handleOpenApi(endpoint.id)}
-                    variant="outlined"
-                    sx={{ flex: 1 }}
-                  >
-                    API
-                  </Button>
-                </Box>
+                <Button
+                  size="small"
+                  startIcon={<Launch />}
+                  onClick={() => handleOpen(endpoint.id)}
+                  variant="outlined"
+                  fullWidth
+                >
+                  Open JSON
+                </Button>
               </CardActions>
             </Card>
           </Grid>

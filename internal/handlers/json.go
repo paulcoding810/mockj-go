@@ -102,31 +102,31 @@ func (h *JSONHandler) GetJSON(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetJSONContent handles GET /api/json/{id}/content - returns raw JSON content
-func (h *JSONHandler) GetJSONContent(w http.ResponseWriter, r *http.Request) {
-	id := extractIDFromPath(r.URL.Path)
-	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_id", "ID is required")
-		return
+// GetRawContent handles GET /raw/{id} - returns the raw JSON content,
+// machine-facing, with a 404 when the endpoint doesn't exist or has expired.
+func (h *JSONHandler) GetRawContent(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !h.ServeContentByID(w, id) {
+		h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
 	}
+}
 
+// ServeContentByID writes the raw JSON content for id and reports whether it
+// was found. It powers the machine-facing /raw/{id} URL.
+//
+// nosniff prevents browsers from MIME-sniffing attacker-controlled content as
+// HTML, which would enable stored XSS. Returns false (writing nothing) when the
+// id doesn't resolve to a live endpoint, so the caller can send a 404.
+func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 	jsonModel, err := h.db.GetJSON(id)
 	if err != nil {
-		if err.Error() == "json not found or expired" {
-			h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
-		} else {
-			h.writeError(w, http.StatusInternalServerError, "database_error", "Failed to retrieve JSON")
-		}
-		return
+		return false
 	}
 
-	// Set Content-Type to application/json and return the raw content.
-	// nosniff prevents browsers from MIME-sniffing attacker-controlled
-	// content as HTML, which would enable stored XSS.
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(jsonModel.Content))
+	return true
 }
 
 // writeJSON writes a JSON response
@@ -155,7 +155,7 @@ func decodeBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 func extractIDFromPath(path string) string {
 	parts := strings.Split(path, "/")
 	if len(parts) >= 4 {
-		return parts[3] // /api/json/{id} or /api/json/{id}/content
+		return parts[3] // /api/json/{id}
 	}
 	return ""
 }

@@ -59,13 +59,12 @@ export default function Home({ addToast }) {
 
     try {
       const response = await client.createJson(jsonContent, expiresIn);
-      const endpointUrl = `${window.location.origin}/api/json/${response.data.id}/content`;
-      const viewUrl = `${window.location.origin}/${response.data.id}`;
+      // /raw/{id} is served as raw application/json by the backend.
+      const endpointUrl = `${window.location.origin}/raw/${response.data.id}`;
 
       const endpointData = {
         ...response.data,
         endpointUrl,
-        viewUrl,
       };
 
       setEndpoint(endpointData);

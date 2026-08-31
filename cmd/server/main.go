@@ -42,7 +42,9 @@ func main() {
 	// API routes (must be registered before static files)
 	mux.HandleFunc("POST /api/json", jsonHandler.CreateJSON)
 	mux.HandleFunc("GET /api/json/{id}", jsonHandler.GetJSON)
-	mux.HandleFunc("GET /api/json/{id}/content", jsonHandler.GetJSONContent)
+
+	// Raw JSON content, machine-facing: GET /raw/{id}
+	mux.HandleFunc("GET /raw/{id}", jsonHandler.GetRawContent)
 
 	// Health check
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

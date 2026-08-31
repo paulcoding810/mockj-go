@@ -103,8 +103,8 @@ func TestJSONHandler(t *testing.T) {
 		}
 	})
 
-	// Test case 4: Get raw JSON content
-	t.Run("GetJSONContent", func(t *testing.T) {
+	// Test case 4: Serve raw JSON content by ID (powers the /raw/{id} URL)
+	t.Run("ServeContentByID", func(t *testing.T) {
 		content := `{"name": "John", "age": 30}`
 		testJson := map[string]interface{}{
 			"json": content,
@@ -121,18 +121,28 @@ func TestJSONHandler(t *testing.T) {
 
 		id := createResponse["data"].(map[string]interface{})["id"].(string)
 
-		req = httptest.NewRequest("GET", "/api/json/"+id+"/content", nil)
+		// Found: writes the raw content verbatim with a nosniff header.
 		w = httptest.NewRecorder()
-		handler.GetJSONContent(w, req)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+		if ok := handler.ServeContentByID(w, id); !ok {
+			t.Fatalf("Expected ServeContentByID to find id %s", id)
 		}
 		if w.Body.String() != content {
 			t.Errorf("Expected raw content %q, got %q", content, w.Body.String())
 		}
+		if w.Header().Get("Content-Type") != "application/json" {
+			t.Errorf("Expected Content-Type: application/json")
+		}
 		if w.Header().Get("X-Content-Type-Options") != "nosniff" {
 			t.Errorf("Expected X-Content-Type-Options: nosniff header")
+		}
+
+		// Missing: returns false and writes nothing.
+		w = httptest.NewRecorder()
+		if ok := handler.ServeContentByID(w, "does-not-exist"); ok {
+			t.Errorf("Expected ServeContentByID to report not found")
+		}
+		if w.Body.Len() != 0 {
+			t.Errorf("Expected empty body for missing id, got %q", w.Body.String())
 		}
 	})
 
