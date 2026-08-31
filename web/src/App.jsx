@@ -23,7 +23,6 @@ function TabPanel({ children, value, index, ...other }) {
 function App() {
   const [tabValue, setTabValue] = useState(0);
   const [toasts, setToasts] = useState([]);
-  const [initialId, setInitialId] = useState("");
 
   const addToast = (message, type = "info", duration = 5000) => {
     const id = Date.now();
@@ -43,11 +42,10 @@ function App() {
     if (path && path !== "/" && !path.startsWith("/api/")) {
       const id = path.replace(/^\//, "");
       if (id === "recents") {
-        setTabValue(2); // Switch to recents tab
+        setTabValue(1); // Switch to recents tab
       } else if (id && id.length > 10) {
-        // Likely a UUID
-        setInitialId(id);
-        setTabValue(1); // Switch to view/update tab
+        // Likely an endpoint ID — open the raw JSON directly.
+        window.location.replace(`/api/json/${id}/content`);
       }
     }
   }, []);
@@ -58,8 +56,6 @@ function App() {
     if (newValue === 0) {
       window.history.pushState({}, "", "/");
     } else if (newValue === 1) {
-      window.history.pushState({}, "", `/${initialId}`);
-    } else if (newValue === 2) {
       window.history.pushState({}, "", "/recents");
     }
   };
@@ -92,7 +88,6 @@ function App() {
               aria-label="JSON endpoint tabs"
             >
               <Tab label="Create Endpoint" />
-              <Tab label="View & Modify Endpoint" />
               <Tab label="Recent Endpoints" />
             </Tabs>
           </Box>
@@ -103,10 +98,6 @@ function App() {
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
-            <Home addToast={addToast} initialId={initialId} viewMode={true} />
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={2}>
             <RecentsBox addToast={addToast} />
           </TabPanel>
         </Container>

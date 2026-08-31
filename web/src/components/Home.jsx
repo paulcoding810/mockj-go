@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Container,
   Grid,
@@ -13,35 +13,17 @@ import {
   Select,
   MenuItem,
   Chip,
-  Alert,
-  CircularProgress,
-  IconButton,
 } from "@mui/material";
-import {
-  ContentPaste,
-  FormatAlignLeft,
-  Visibility,
-} from "@mui/icons-material";
+import { ContentPaste, FormatAlignLeft } from "@mui/icons-material";
 import MockJGoClient from "../services/api.js";
-import {
-  JsonHelper,
-  DateHelper,
-  ClipboardHelper,
-  StorageHelper,
-} from "../utils/helpers.js";
+import { JsonHelper, ClipboardHelper, StorageHelper } from "../utils/helpers.js";
 
-export default function Home({ addToast, initialId = "", viewMode = false }) {
+export default function Home({ addToast }) {
   const [jsonContent, setJsonContent] = useState("");
   const [expiresIn, setExpiresIn] = useState("720");
   const [endpoint, setEndpoint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validation, setValidation] = useState({ valid: false, error: null });
-
-  // View mode states
-  const [viewId, setViewId] = useState(initialId);
-  const [endpointData, setEndpointData] = useState(null);
-  const [endpointLoading, setEndpointLoading] = useState(false);
-  const [endpointError, setEndpointError] = useState(null);
 
   const client = new MockJGoClient();
 
@@ -93,35 +75,12 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
       addToast("JSON endpoint created successfully!", "success");
 
-      window.open(viewUrl, "_blank");
+      // Open the raw JSON directly in a new tab
+      window.open(endpointUrl, "_blank");
     } catch (error) {
       addToast(error.message || "Failed to create endpoint", "error");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadEndpoint = async (id) => {
-    if (!id || id.trim() === "") {
-      setEndpointData(null);
-      setEndpointError(null);
-      return;
-    }
-
-    setEndpointLoading(true);
-    setEndpointError(null);
-
-    try {
-      const response = await client.getJson(id.trim());
-      setEndpointData(response.data);
-
-      // Update URL without page reload
-      window.history.pushState({}, "", `/${id}`);
-    } catch (error) {
-      setEndpointError(error.message || "Failed to load endpoint");
-      addToast(error.message || "Failed to load endpoint", "error");
-    } finally {
-      setEndpointLoading(false);
     }
   };
 
@@ -140,15 +99,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     }
   };
 
-  const viewRawJson = () => {
-    if (endpointData) {
-      window.open(
-        `${window.location.origin}/api/json/${endpointData.id}/content`,
-        "_blank",
-      );
-    }
-  };
-
   const resetForm = () => {
     setJsonContent("");
     setExpiresIn("720");
@@ -156,193 +106,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
     setValidation({ valid: false, error: null });
   };
 
-  // Load initial endpoint if in view mode
-  useEffect(() => {
-    if (viewMode && initialId) {
-      setViewId(initialId);
-      loadEndpoint(initialId);
-    }
-  }, [viewMode, initialId]);
-
-  if (viewMode) {
-    return (
-      <Container maxWidth="lg">
-        {/* View Mode Header */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
-              Load JSON Endpoint
-            </Typography>
-            <Box sx={{ display: "flex", gap: 2, alignItems: "flex-end" }}>
-              <TextField
-                fullWidth
-                label="Endpoint ID"
-                value={viewId}
-                onChange={(e) => setViewId(e.target.value)}
-                placeholder="Enter endpoint ID"
-                sx={{ maxWidth: 400 }}
-              />
-              <Button
-                variant="contained"
-                onClick={() => loadEndpoint(viewId)}
-                disabled={endpointLoading || !viewId.trim()}
-              >
-                {endpointLoading ? "Loading..." : "Load"}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Endpoint Loading/Error States */}
-        {endpointLoading && (
-          <Card sx={{ mb: 3, textAlign: "center", py: 4 }}>
-            <CardContent>
-              <CircularProgress size={60} sx={{ mb: 2 }} />
-              <Typography variant="h6">Loading JSON endpoint...</Typography>
-            </CardContent>
-          </Card>
-        )}
-
-        {endpointError && (
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Alert severity="error">
-                <Typography variant="h6" gutterBottom>
-                  ❌ Endpoint Not Found
-                </Typography>
-                <Typography>{endpointError}</Typography>
-              </Alert>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Endpoint Content */}
-        {endpointData && (
-          <Grid container spacing={3}>
-            {/* Endpoint Info */}
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    Endpoint Information
-                  </Typography>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      API Endpoint URL
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                      <TextField
-                        fullWidth
-                        value={`${window.location.origin}/api/json/${endpointData.id}/content`}
-                        InputProps={{ readOnly: true }}
-                        size="small"
-                      />
-                      <IconButton
-                        onClick={() =>
-                          copyToClipboard(
-                            `${window.location.origin}/api/json/${endpointData.id}/content`,
-                            "API URL",
-                          )
-                        }
-                      >
-                        <ContentPaste />
-                      </IconButton>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Endpoint Details
-                    </Typography>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
-                    >
-                      <Typography variant="body2">
-                        <strong>ID:</strong> {endpointData.id}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Created:</strong>{" "}
-                        {DateHelper.formatDateTime(endpointData.createdAt)}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Expires:</strong>{" "}
-                        {DateHelper.formatDateTime(endpointData.expires)}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Status:</strong>
-                        <Chip
-                          label={DateHelper.formatRelative(
-                            endpointData.expires,
-                          )}
-                          color={
-                            DateHelper.formatRelative(
-                              endpointData.expires,
-                            ) === "Expired"
-                              ? "error"
-                              : "success"
-                          }
-                          size="small"
-                          sx={{ ml: 1 }}
-                        />
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Visibility />}
-                      onClick={viewRawJson}
-                    >
-                      View Raw JSON
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* JSON Content */}
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    JSON Content
-                  </Typography>
-
-                  <Box className="json-display" sx={{ mb: 2, p: 2 }}>
-                    <pre>{JsonHelper.formatForDisplay(endpointData.json)}</pre>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() =>
-                        copyToClipboard(
-                          JsonHelper.formatForDisplay(endpointData.json),
-                          "JSON",
-                        )
-                      }
-                    >
-                      <ContentPaste sx={{ mr: 1 }} />
-                      Copy JSON
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
-      </Container>
-    );
-  }
-
-  // Create Mode (default)
   return (
     <Container maxWidth="lg" sx={{ pb: 3 }}>
       <Grid container spacing={3}>
@@ -452,28 +215,6 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
                   </Box>
                 </Box>
 
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    View URL
-                  </Typography>
-                  <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                    <TextField
-                      fullWidth
-                      value={endpoint.viewUrl}
-                      InputProps={{ readOnly: true }}
-                      size="small"
-                    />
-                    <Button
-                      variant="outlined"
-                      onClick={() =>
-                        copyToClipboard(endpoint.viewUrl, "View URL")
-                      }
-                    >
-                      <ContentPaste />
-                    </Button>
-                  </Box>
-                </Box>
-
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" gutterBottom>
                     Endpoint Details
@@ -495,11 +236,11 @@ export default function Home({ addToast, initialId = "", viewMode = false }) {
 
                 <Button
                   variant="contained"
-                  href={endpoint.viewUrl}
+                  href={endpoint.endpointUrl}
                   target="_blank"
                   fullWidth
                 >
-                  View Endpoint
+                  Open JSON
                 </Button>
               </CardContent>
             </Card>
