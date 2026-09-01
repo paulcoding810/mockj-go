@@ -98,8 +98,8 @@ jobs:
             exit 1
           fi
 
-          # Check the raw content endpoint returns the stored JSON verbatim
-          content_response=$(curl -s http://localhost:8080/api/json/$id/content)
+          # Check the raw content endpoint (GET /raw/{id}) returns the stored JSON verbatim
+          content_response=$(curl -s http://localhost:8080/raw/$id)
           echo "Content response: $content_response"
 
           if echo "$content_response" | jq -e '.test == "retrieve"' > /dev/null; then
@@ -148,6 +148,16 @@ jobs:
             exit 1
           fi
 
+          # Client-side routes (react-router) should fall back to the SPA (index.html)
+          spa_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/some-client-route)
+
+          if [ "$spa_response" = "200" ]; then
+            echo "✅ SPA fallback routing is working"
+          else
+            echo "❌ SPA fallback routing failed (status: $spa_response)"
+            exit 1
+          fi
+
       - name: Test rate limiting
         run: |
           echo "🚦 Testing rate limiting..."
@@ -183,7 +193,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
 
