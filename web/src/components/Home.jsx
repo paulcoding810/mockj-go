@@ -18,14 +18,30 @@ import { ContentPaste, FormatAlignLeft } from "@mui/icons-material";
 import MockJGoClient from "../services/api.js";
 import { JsonHelper, ClipboardHelper, StorageHelper } from "../utils/helpers.js";
 
+const CONTENT_TYPES = [
+  { value: "application/json", label: "JSON", placeholder: '{"example": "data", "status": "success"}' },
+  { value: "application/xml", label: "XML", placeholder: "<root><example>data</example></root>" },
+  { value: "text/plain", label: "Plain text", placeholder: "Hello, world" },
+  { value: "text/csv", label: "CSV", placeholder: "name,age\nJohn,30" },
+  { value: "text/markdown", label: "Markdown", placeholder: "# Title\n\nSome **markdown**." },
+  { value: "application/yaml", label: "YAML", placeholder: "example: data\nstatus: success" },
+];
+
 export default function Home({ addToast }) {
   const [jsonContent, setJsonContent] = useState("");
+  const [contentType, setContentType] = useState("application/json");
   const [expiresIn, setExpiresIn] = useState("720");
   const [endpoint, setEndpoint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validation, setValidation] = useState({ valid: false, error: null });
 
   const client = new MockJGoClient();
+
+  const isJson = contentType === "application/json";
+  const contentReady =
+    jsonContent.trim() !== "" && (!isJson || validation.valid);
+  const activeType =
+    CONTENT_TYPES.find((t) => t.value === contentType) || CONTENT_TYPES[0];
 
   const validateJson = (value) => {
     const result = JsonHelper.validate(value);
@@ -35,8 +51,17 @@ export default function Home({ addToast }) {
 
   const handleJsonChange = (value) => {
     setJsonContent(value);
-    if (value.trim()) {
+    if (isJson && value.trim()) {
       validateJson(value);
+    } else {
+      setValidation({ valid: false, error: null });
+    }
+  };
+
+  const handleContentTypeChange = (value) => {
+    setContentType(value);
+    if (value === "application/json" && jsonContent.trim()) {
+      validateJson(jsonContent);
     } else {
       setValidation({ valid: false, error: null });
     }
@@ -46,11 +71,11 @@ export default function Home({ addToast }) {
     e.preventDefault();
 
     if (!jsonContent.trim()) {
-      addToast("JSON content is required", "error");
+      addToast("Content is required", "error");
       return;
     }
 
-    if (!validateJson(jsonContent)) {
+    if (isJson && !validateJson(jsonContent)) {
       addToast("Please enter valid JSON", "error");
       return;
     }
@@ -58,8 +83,12 @@ export default function Home({ addToast }) {
     setLoading(true);
 
     try {
-      const response = await client.createJson(jsonContent, expiresIn);
-      // /raw/{id} is served as raw application/json by the backend.
+      const response = await client.createJson(
+        jsonContent,
+        expiresIn,
+        contentType,
+      );
+      // /raw/{id} is served with the stored content type by the backend.
       const endpointUrl = `${window.location.origin}/raw/${response.data.id}`;
 
       const endpointData = {
@@ -100,6 +129,7 @@ export default function Home({ addToast }) {
 
   const resetForm = () => {
     setJsonContent("");
+    setContentType("application/json");
     setExpiresIn("720");
     setEndpoint(null);
     setValidation({ valid: false, error: null });
@@ -117,34 +147,55 @@ export default function Home({ addToast }) {
               </Typography>
 
               <Box component="form" onSubmit={handleCreate} sx={{ mt: 2 }}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Content Type</InputLabel>
+                  <Select
+                    value={contentType}
+                    onChange={(e) => handleContentTypeChange(e.target.value)}
+                    label="Content Type"
+                  >
+                    {CONTENT_TYPES.map((t) => (
+                      <MenuItem key={t.value} value={t.value}>
+                        {t.label} ({t.value})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
                 <TextField
                   fullWidth
                   multiline
                   rows={8}
-                  label="JSON Content"
-                  placeholder='{"example": "data", "status": "success"}'
+                  label="Content"
+                  placeholder={activeType.placeholder}
                   value={jsonContent}
                   onChange={(e) => handleJsonChange(e.target.value)}
-                  error={!validation.valid && validation.error !== null}
-                  helperText={validation.error || "Enter valid JSON data"}
+                  error={isJson && !validation.valid && validation.error !== null}
+                  helperText={
+                    isJson
+                      ? validation.error || "Enter valid JSON data"
+                      : `Enter ${activeType.label} content`
+                  }
                   className="json-editor"
                   sx={{ mb: 2 }}
                 />
 
-                <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FormatAlignLeft />}
-                    onClick={formatJson}
-                    disabled={!jsonContent.trim()}
-                  >
-                    Format JSON
-                  </Button>
+                {isJson && (
+                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FormatAlignLeft />}
+                      onClick={formatJson}
+                      disabled={!jsonContent.trim()}
+                    >
+                      Format JSON
+                    </Button>
 
-                  {jsonContent.trim() && validation.valid && (
-                    <Chip label="✓ Valid JSON" color="success" size="small" />
-                  )}
-                </Box>
+                    {jsonContent.trim() && validation.valid && (
+                      <Chip label="✓ Valid JSON" color="success" size="small" />
+                    )}
+                  </Box>
+                )}
 
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Expires In</InputLabel>
@@ -167,7 +218,7 @@ export default function Home({ addToast }) {
                   variant="contained"
                   size="large"
                   fullWidth
-                  disabled={loading || !jsonContent.trim() || !validation.valid}
+                  disabled={loading || !contentReady}
                   sx={{ mb: 2 }}
                 >
                   {loading ? "Creating..." : "Create Endpoint"}
@@ -223,6 +274,10 @@ export default function Home({ addToast }) {
                       <strong>ID:</strong> {endpoint.id}
                     </Typography>
                     <Typography variant="body2">
+                      <strong>Content type:</strong>{" "}
+                      {endpoint.contentType || "application/json"}
+                    </Typography>
+                    <Typography variant="body2">
                       <strong>Created:</strong>{" "}
                       {new Date(endpoint.createdAt).toLocaleString()}
                     </Typography>
@@ -239,7 +294,7 @@ export default function Home({ addToast }) {
                   target="_blank"
                   fullWidth
                 >
-                  Open JSON
+                  Open Content
                 </Button>
               </CardContent>
             </Card>

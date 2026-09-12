@@ -10,11 +10,12 @@ import (
 
 // JSON represents a JSON entity in the database
 type JSON struct {
-	ID         string    `json:"id" db:"id"`
-	Content    string    `json:"json" db:"json"`
-	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
-	ModifiedAt time.Time `json:"modifiedAt" db:"modified_at"`
-	Expires    time.Time `json:"expires" db:"expires"`
+	ID          string    `json:"id" db:"id"`
+	Content     string    `json:"json" db:"json"`
+	ContentType string    `json:"contentType" db:"content_type"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	ModifiedAt  time.Time `json:"modifiedAt" db:"modified_at"`
+	Expires     time.Time `json:"expires" db:"expires"`
 }
 
 // JSONData represents the JSON content with proper validation
@@ -48,11 +49,12 @@ func (j *JSONData) Scan(value interface{}) error {
 func NewJSON(content string) *JSON {
 	now := time.Now()
 	return &JSON{
-		ID:         uuid.New().String(),
-		Content:    content,
-		CreatedAt:  now,
-		ModifiedAt: now,
-		Expires:    now.AddDate(0, 0, 60), // Default 60 days
+		ID:          uuid.New().String(),
+		Content:     content,
+		ContentType: "application/json",
+		CreatedAt:   now,
+		ModifiedAt:  now,
+		Expires:     now.AddDate(0, 0, 60), // Default 60 days
 	}
 }
 

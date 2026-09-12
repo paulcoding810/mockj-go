@@ -87,3 +87,62 @@ func TestMigrateDropsLegacyPasswordColumn(t *testing.T) {
 		t.Fatalf("CreateJSON after migration: %v", err)
 	}
 }
+
+// TestMigrateAddsContentTypeColumn verifies that opening a database whose schema
+// predates the content_type column adds it and backfills existing rows with the
+// historical default (application/json).
+func TestMigrateAddsContentTypeColumn(t *testing.T) {
+	tmpPath := filepath.Join(t.TempDir(), "no-content-type.db")
+
+	// Build a database WITHOUT the content_type column and seed one row.
+	raw, err := sql.Open("sqlite3", tmpPath)
+	if err != nil {
+		t.Fatalf("open raw db: %v", err)
+	}
+	_, err = raw.Exec(`
+	CREATE TABLE json (
+		id TEXT PRIMARY KEY,
+		json TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		modified_at DATETIME NOT NULL,
+		expires DATETIME NOT NULL
+	);`)
+	if err != nil {
+		t.Fatalf("create pre-content-type schema: %v", err)
+	}
+
+	now := time.Now()
+	future := now.AddDate(0, 0, 30)
+	_, err = raw.Exec(
+		`INSERT INTO json (id, json, created_at, modified_at, expires) VALUES (?, ?, ?, ?, ?)`,
+		"old-id", `{"old":true}`, now, now, future,
+	)
+	if err != nil {
+		t.Fatalf("seed row: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw db: %v", err)
+	}
+
+	db, err := NewDatabase(tmpPath)
+	if err != nil {
+		t.Fatalf("NewDatabase: %v", err)
+	}
+	defer db.Close()
+
+	has, err := db.columnExists("json", "content_type")
+	if err != nil {
+		t.Fatalf("columnExists: %v", err)
+	}
+	if !has {
+		t.Fatalf("expected content_type column to be added")
+	}
+
+	existing, err := db.GetJSON("old-id")
+	if err != nil {
+		t.Fatalf("GetJSON(old-id): %v", err)
+	}
+	if existing.ContentType != "application/json" {
+		t.Errorf("expected backfilled content_type application/json, got %q", existing.ContentType)
+	}
+}

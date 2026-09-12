@@ -31,7 +31,11 @@ class MockJGoClient {
     }
   }
 
-  async createJson(jsonContent, expiresInHours = 720) {
+  async createJson(
+    jsonContent,
+    expiresInHours = 720,
+    contentType = "application/json",
+  ) {
     const expires = new Date();
     expires.setHours(expires.getHours() + parseInt(expiresInHours));
 
@@ -39,6 +43,7 @@ class MockJGoClient {
       method: "POST",
       body: JSON.stringify({
         json: jsonContent,
+        contentType,
         expires: expires.toISOString(),
       }),
     });

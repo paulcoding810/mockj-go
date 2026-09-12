@@ -156,4 +156,87 @@ func TestJSONHandler(t *testing.T) {
 			t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
 		}
 	})
+
+	// Test case 6: A non-JSON content type is stored and served verbatim.
+	t.Run("ServeContentByIDWithContentType", func(t *testing.T) {
+		content := "<root><example>data</example></root>"
+		reqBody := map[string]interface{}{
+			"json":        content,
+			"contentType": "application/xml",
+		}
+
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.CreateJSON(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Fatalf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		}
+
+		var createResponse map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createResponse)
+		id := createResponse["data"].(map[string]interface{})["id"].(string)
+
+		w = httptest.NewRecorder()
+		if ok := handler.ServeContentByID(w, id); !ok {
+			t.Fatalf("Expected ServeContentByID to find id %s", id)
+		}
+		if w.Body.String() != content {
+			t.Errorf("Expected raw content %q, got %q", content, w.Body.String())
+		}
+		if w.Header().Get("Content-Type") != "application/xml" {
+			t.Errorf("Expected Content-Type: application/xml, got %q", w.Header().Get("Content-Type"))
+		}
+		if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("Expected X-Content-Type-Options: nosniff header")
+		}
+	})
+
+	// Test case 7: A disallowed content type is rejected.
+	t.Run("CreateJSONDisallowedContentType", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"json":        "<script>alert(1)</script>",
+			"contentType": "text/html",
+		}
+
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.CreateJSON(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
+
+	// Test case 8: Omitting contentType defaults to application/json (backward compat).
+	t.Run("CreateJSONDefaultsContentType", func(t *testing.T) {
+		reqBody := map[string]interface{}{
+			"json": `{"ok": true}`,
+		}
+
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.CreateJSON(w, req)
+
+		var createResponse map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createResponse)
+		data := createResponse["data"].(map[string]interface{})
+		if data["contentType"] != "application/json" {
+			t.Errorf("Expected default contentType application/json, got %v", data["contentType"])
+		}
+
+		w = httptest.NewRecorder()
+		if ok := handler.ServeContentByID(w, data["id"].(string)); !ok {
+			t.Fatalf("Expected ServeContentByID to find created id")
+		}
+		if w.Header().Get("Content-Type") != "application/json" {
+			t.Errorf("Expected Content-Type: application/json, got %q", w.Header().Get("Content-Type"))
+		}
+	})
 }

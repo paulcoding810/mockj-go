@@ -14,6 +14,22 @@ import (
 // DoS from arbitrarily large payloads (1 MiB).
 const maxBodyBytes = 1 << 20
 
+const defaultContentType = "application/json"
+
+// allowedContentTypes is a curated allowlist of non-executable types the raw
+// endpoint may serve. text/html and image/svg+xml are deliberately excluded:
+// /raw/{id} is served from the app origin, so rendering attacker-controlled
+// HTML/SVG there would be stored XSS.
+var allowedContentTypes = map[string]bool{
+	"application/json": true,
+	"application/xml":  true,
+	"text/xml":         true,
+	"text/plain":       true,
+	"text/csv":         true,
+	"text/markdown":    true,
+	"application/yaml": true,
+}
+
 type JSONHandler struct {
 	db *database.Database
 }
@@ -24,8 +40,9 @@ func NewJSONHandler(db *database.Database) *JSONHandler {
 
 // CreateJSONRequest represents the request body for creating a JSON
 type CreateJSONRequest struct {
-	Content string     `json:"json"`
-	Expires *time.Time `json:"expires,omitempty"`
+	Content     string     `json:"json"`
+	ContentType string     `json:"contentType,omitempty"`
+	Expires     *time.Time `json:"expires,omitempty"`
 }
 
 // ErrorResponse represents an error response
@@ -53,6 +70,15 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	contentType := req.ContentType
+	if contentType == "" {
+		contentType = defaultContentType
+	}
+	if !allowedContentTypes[contentType] {
+		h.writeError(w, http.StatusBadRequest, "invalid_content_type", "Unsupported content type")
+		return
+	}
+
 	if req.Expires != nil && req.Expires.Before(time.Now()) {
 		h.writeError(w, http.StatusBadRequest, "invalid_expires", "Expiration time must be in the future")
 		return
@@ -64,6 +90,7 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonModel := models.NewJSON(req.Content)
+	jsonModel.ContentType = contentType
 	if req.Expires != nil {
 		jsonModel.Expires = *req.Expires
 	}
@@ -123,7 +150,11 @@ func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 		return false
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	contentType := jsonModel.ContentType
+	if contentType == "" {
+		contentType = defaultContentType
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write([]byte(jsonModel.Content))
 	return true

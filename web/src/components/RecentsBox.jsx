@@ -189,6 +189,12 @@ const RecentsBox = ({ addToast }) => {
 
                 <Box mb={2}>
                   <Chip
+                    label={endpoint.contentType || "application/json"}
+                    size="small"
+                    variant="outlined"
+                    sx={{ mb: 1, display: "block" }}
+                  />
+                  <Chip
                     label={`Created: ${DateHelper.formatRelative(endpoint.createdAt)}`}
                     size="small"
                     color="primary"
@@ -258,7 +264,7 @@ const RecentsBox = ({ addToast }) => {
                   variant="outlined"
                   fullWidth
                 >
-                  Open JSON
+                  Open Content
                 </Button>
               </CardActions>
             </Card>

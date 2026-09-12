@@ -55,6 +55,19 @@ func (d *Database) migrate() error {
 		}
 		log.Println("Migrated database: dropped legacy password column")
 	}
+
+	// content_type was added to support serving non-JSON payloads. Backfill
+	// pre-existing rows with the historical default so the NOT NULL holds.
+	hasContentType, err := d.columnExists("json", "content_type")
+	if err != nil {
+		return err
+	}
+	if !hasContentType {
+		if _, err := d.db.Exec(`ALTER TABLE json ADD COLUMN content_type TEXT NOT NULL DEFAULT 'application/json'`); err != nil {
+			return fmt.Errorf("failed to add content_type column: %w", err)
+		}
+		log.Println("Migrated database: added content_type column")
+	}
 	return nil
 }
 
@@ -93,6 +106,7 @@ func (d *Database) createTables() error {
 	CREATE TABLE IF NOT EXISTS json (
 		id TEXT PRIMARY KEY,
 		json TEXT NOT NULL,
+		content_type TEXT NOT NULL DEFAULT 'application/json',
 		created_at DATETIME NOT NULL,
 		modified_at DATETIME NOT NULL,
 		expires DATETIME NOT NULL
@@ -114,18 +128,18 @@ func (d *Database) Close() error {
 // CreateJSON inserts a new JSON entity
 func (d *Database) CreateJSON(json *models.JSON) error {
 	query := `
-	INSERT INTO json (id, json, created_at, modified_at, expires)
-	VALUES (?, ?, ?, ?, ?)
+	INSERT INTO json (id, json, content_type, created_at, modified_at, expires)
+	VALUES (?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query, json.ID, json.Content, json.CreatedAt, json.ModifiedAt, json.Expires)
+	_, err := d.db.Exec(query, json.ID, json.Content, json.ContentType, json.CreatedAt, json.ModifiedAt, json.Expires)
 	return err
 }
 
 // GetJSON retrieves a JSON entity by ID
 func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	query := `
-	SELECT id, json, created_at, modified_at, expires
+	SELECT id, json, content_type, created_at, modified_at, expires
 	FROM json
 	WHERE id = ? AND expires > ?
 	`
@@ -134,6 +148,7 @@ func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	err := d.db.QueryRow(query, id, time.Now()).Scan(
 		&json.ID,
 		&json.Content,
+		&json.ContentType,
 		&json.CreatedAt,
 		&json.ModifiedAt,
 		&json.Expires,

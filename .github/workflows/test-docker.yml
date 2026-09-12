@@ -109,6 +109,45 @@ jobs:
             exit 1
           fi
 
+      - name: Test non-JSON content types
+        run: |
+          echo "📎 Testing non-JSON content types..."
+
+          # Create an endpoint with an explicit non-JSON content type
+          id=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"json":"hello world","contentType":"text/plain"}' \
+            http://localhost:8080/api/json | jq -r '.data.id')
+
+          if [ -z "$id" ] || [ "$id" = "null" ]; then
+            echo "❌ Failed to create text/plain endpoint"
+            exit 1
+          fi
+
+          # The raw endpoint must serve it with the stored content type
+          served_type=$(curl -s -o /dev/null -w "%{content_type}" http://localhost:8080/raw/$id)
+          echo "Served Content-Type: $served_type"
+
+          if echo "$served_type" | grep -q "text/plain"; then
+            echo "✅ Non-JSON content type served correctly"
+          else
+            echo "❌ Expected text/plain, got: $served_type"
+            exit 1
+          fi
+
+          # A disallowed content type (text/html) must be rejected
+          status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"json":"<b>x</b>","contentType":"text/html"}' \
+            http://localhost:8080/api/json)
+
+          if [ "$status" = "400" ]; then
+            echo "✅ Disallowed content type rejected"
+          else
+            echo "❌ Expected 400 for text/html, got: $status"
+            exit 1
+          fi
+
       - name: Test endpoint expiration handling
         run: |
           echo "⏰ Testing expired endpoint handling..."
