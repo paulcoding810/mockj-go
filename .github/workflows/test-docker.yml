@@ -109,6 +109,17 @@ jobs:
             exit 1
           fi
 
+          # The canonical sub-resource route must return the same content
+          canonical_response=$(curl -s http://localhost:8080/api/json/$id/raw)
+          echo "Canonical response: $canonical_response"
+
+          if [ "$canonical_response" = "$content_response" ]; then
+            echo "✅ Canonical /api/json/{id}/raw matches /raw/{id}"
+          else
+            echo "❌ Canonical raw route out of sync with /raw/{id}"
+            exit 1
+          fi
+
       - name: Test non-JSON content types
         run: |
           echo "📎 Testing non-JSON content types..."

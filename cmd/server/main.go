@@ -43,7 +43,9 @@ func main() {
 	mux.HandleFunc("POST /api/json", jsonHandler.CreateJSON)
 	mux.HandleFunc("GET /api/json/{id}", jsonHandler.GetJSON)
 
-	// Raw JSON content, machine-facing: GET /raw/{id}
+	// Raw content is a sub-resource of the item, symmetric with create/read
+	// under /api/json. /raw/{id} is kept as a short alias for shareable URLs.
+	mux.HandleFunc("GET /api/json/{id}/raw", jsonHandler.GetRawContent)
 	mux.HandleFunc("GET /raw/{id}", jsonHandler.GetRawContent)
 
 	// Health check

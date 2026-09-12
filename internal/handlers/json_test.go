@@ -232,6 +232,37 @@ func TestJSONHandler(t *testing.T) {
 		}
 	})
 
+	// Test case 6c: the canonical /api/json/{id}/raw sub-resource and the
+	// /raw/{id} short alias resolve to the same content via the router.
+	t.Run("RawRoutesAreSynced", func(t *testing.T) {
+		content := `{"synced": true}`
+		reqBody := map[string]interface{}{"json": content}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.CreateJSON(w, req)
+
+		var createResponse map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createResponse)
+		id := createResponse["data"].(map[string]interface{})["id"].(string)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/json/{id}/raw", handler.GetRawContent)
+		mux.HandleFunc("GET /raw/{id}", handler.GetRawContent)
+
+		for _, path := range []string{"/api/json/" + id + "/raw", "/raw/" + id} {
+			rw := httptest.NewRecorder()
+			mux.ServeHTTP(rw, httptest.NewRequest("GET", path, nil))
+			if rw.Code != http.StatusOK {
+				t.Errorf("%s: expected 200, got %d", path, rw.Code)
+			}
+			if rw.Body.String() != content {
+				t.Errorf("%s: expected %q, got %q", path, content, rw.Body.String())
+			}
+		}
+	})
+
 	// Test case 7: A disallowed content type is rejected.
 	t.Run("CreateJSONDisallowedContentType", func(t *testing.T) {
 		reqBody := map[string]interface{}{
