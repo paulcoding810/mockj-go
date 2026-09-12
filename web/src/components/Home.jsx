@@ -173,6 +173,7 @@ export default function Home({ addToast }) {
                   rows={8}
                   label="Content"
                   placeholder={activeType.placeholder}
+                  InputLabelProps={{ shrink: true }}
                   value={jsonContent}
                   onChange={(e) => handleJsonChange(e.target.value)}
                   error={isJson && !validation.valid && validation.error !== null}
