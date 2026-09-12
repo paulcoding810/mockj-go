@@ -194,6 +194,44 @@ func TestJSONHandler(t *testing.T) {
 		}
 	})
 
+	// Test case 6b: JavaScript is stored and served with its executable type.
+	t.Run("ServeJavaScript", func(t *testing.T) {
+		content := "console.log('hello');"
+		reqBody := map[string]interface{}{
+			"json":        content,
+			"contentType": "application/javascript",
+		}
+
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.CreateJSON(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Fatalf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		}
+
+		var createResponse map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createResponse)
+		data := createResponse["data"].(map[string]interface{})
+
+		if data["contentType"] != "application/javascript" {
+			t.Errorf("Expected stored contentType application/javascript, got %v", data["contentType"])
+		}
+
+		w = httptest.NewRecorder()
+		if ok := handler.ServeContentByID(w, data["id"].(string)); !ok {
+			t.Fatalf("Expected ServeContentByID to find created id")
+		}
+		if w.Body.String() != content {
+			t.Errorf("Expected raw content %q, got %q", content, w.Body.String())
+		}
+		if w.Header().Get("Content-Type") != "application/javascript" {
+			t.Errorf("Expected Content-Type: application/javascript, got %q", w.Header().Get("Content-Type"))
+		}
+	})
+
 	// Test case 7: A disallowed content type is rejected.
 	t.Run("CreateJSONDisallowedContentType", func(t *testing.T) {
 		reqBody := map[string]interface{}{

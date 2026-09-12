@@ -25,6 +25,11 @@ const CONTENT_TYPES = [
   { value: "text/csv", label: "CSV", placeholder: "name,age\nJohn,30" },
   { value: "text/markdown", label: "Markdown", placeholder: "# Title\n\nSome **markdown**." },
   { value: "application/yaml", label: "YAML", placeholder: "example: data\nstatus: success" },
+  {
+    value: "application/javascript",
+    label: "JavaScript",
+    placeholder: "console.log('hello');",
+  },
 ];
 
 export default function Home({ addToast }) {

@@ -16,18 +16,22 @@ const maxBodyBytes = 1 << 20
 
 const defaultContentType = "application/json"
 
-// allowedContentTypes is a curated allowlist of non-executable types the raw
-// endpoint may serve. text/html and image/svg+xml are deliberately excluded:
-// /raw/{id} is served from the app origin, so rendering attacker-controlled
-// HTML/SVG there would be stored XSS.
-var allowedContentTypes = map[string]bool{
-	"application/json": true,
-	"application/xml":  true,
-	"text/xml":         true,
-	"text/plain":       true,
-	"text/csv":         true,
-	"text/markdown":    true,
-	"application/yaml": true,
+// allowedContentTypes maps an accepted request content type to the Content-Type
+// used when serving it back from /raw/{id}. text/html and image/svg+xml are
+// excluded entirely: /raw/{id} is served from the app origin, so rendering
+// attacker-controlled markup there would be stored XSS. JavaScript IS served
+// with its executable type, so a /raw/{id} URL can be loaded via <script src>
+// and will run in this origin — an intentional feature, not sniffing.
+var allowedContentTypes = map[string]string{
+	"application/json":       "application/json",
+	"application/xml":        "application/xml",
+	"text/xml":               "text/xml",
+	"text/plain":             "text/plain",
+	"text/csv":               "text/csv",
+	"text/markdown":          "text/markdown",
+	"application/yaml":        "application/yaml",
+	"application/javascript": "application/javascript",
+	"text/javascript":        "text/javascript",
 }
 
 type JSONHandler struct {
@@ -74,7 +78,7 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 	if contentType == "" {
 		contentType = defaultContentType
 	}
-	if !allowedContentTypes[contentType] {
+	if _, ok := allowedContentTypes[contentType]; !ok {
 		h.writeError(w, http.StatusBadRequest, "invalid_content_type", "Unsupported content type")
 		return
 	}
@@ -150,11 +154,14 @@ func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 		return false
 	}
 
-	contentType := jsonModel.ContentType
-	if contentType == "" {
-		contentType = defaultContentType
+	// Serve using the mapped Content-Type so executable types (JS) go out as
+	// text/plain and are never run from our origin. Unknown/blank types fall
+	// back to the default.
+	served := allowedContentTypes[jsonModel.ContentType]
+	if served == "" {
+		served = defaultContentType
 	}
-	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Type", served)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write([]byte(jsonModel.Content))
 	return true
