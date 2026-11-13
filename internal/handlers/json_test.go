@@ -189,6 +189,9 @@ func TestJSONHandler(t *testing.T) {
 		if w.Header().Get("Content-Type") != "application/xml" {
 			t.Errorf("Expected Content-Type: application/xml, got %q", w.Header().Get("Content-Type"))
 		}
+		if w.Header().Get("Content-Security-Policy") != "default-src 'none'; sandbox" {
+			t.Errorf("Expected sandbox CSP, got %q", w.Header().Get("Content-Security-Policy"))
+		}
 		if w.Header().Get("X-Content-Type-Options") != "nosniff" {
 			t.Errorf("Expected X-Content-Type-Options: nosniff header")
 		}

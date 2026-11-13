@@ -145,8 +145,8 @@ func (h *JSONHandler) GetRawContent(w http.ResponseWriter, r *http.Request) {
 // ServeContentByID writes the raw JSON content for id and reports whether it
 // was found. It powers the machine-facing /raw/{id} URL.
 //
-// nosniff prevents browsers from MIME-sniffing attacker-controlled content as
-// HTML, which would enable stored XSS. Returns false (writing nothing) when the
+// nosniff prevents MIME-sniffing; the sandbox CSP stops renderable types (XML/XHTML)
+// from running scripts in our origin. Returns false (writing nothing) when the
 // id doesn't resolve to a live endpoint, so the caller can send a 404.
 func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 	jsonModel, err := h.db.GetJSON(id)
@@ -154,15 +154,14 @@ func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 		return false
 	}
 
-	// Serve using the mapped Content-Type so executable types (JS) go out as
-	// text/plain and are never run from our origin. Unknown/blank types fall
-	// back to the default.
+	// Unknown/blank types fall back to the default.
 	served := allowedContentTypes[jsonModel.ContentType]
 	if served == "" {
 		served = defaultContentType
 	}
 	w.Header().Set("Content-Type", served)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	_, _ = w.Write([]byte(jsonModel.Content))
 	return true
 }
