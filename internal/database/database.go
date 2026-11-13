@@ -68,6 +68,24 @@ func (d *Database) migrate() error {
 		}
 		log.Println("Migrated database: added content_type column")
 	}
+
+	// name, status and delay_ms were added for labelling and mocking errors/latency.
+	for _, col := range []struct{ name, ddl string }{
+		{"name", `ALTER TABLE json ADD COLUMN name TEXT NOT NULL DEFAULT ''`},
+		{"status", `ALTER TABLE json ADD COLUMN status INTEGER NOT NULL DEFAULT 200`},
+		{"delay_ms", `ALTER TABLE json ADD COLUMN delay_ms INTEGER NOT NULL DEFAULT 0`},
+	} {
+		has, err := d.columnExists("json", col.name)
+		if err != nil {
+			return err
+		}
+		if !has {
+			if _, err := d.db.Exec(col.ddl); err != nil {
+				return fmt.Errorf("failed to add %s column: %w", col.name, err)
+			}
+			log.Printf("Migrated database: added %s column", col.name)
+		}
+	}
 	return nil
 }
 
@@ -107,6 +125,9 @@ func (d *Database) createTables() error {
 		id TEXT PRIMARY KEY,
 		json TEXT NOT NULL,
 		content_type TEXT NOT NULL DEFAULT 'application/json',
+		name TEXT NOT NULL DEFAULT '',
+		status INTEGER NOT NULL DEFAULT 200,
+		delay_ms INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME NOT NULL,
 		modified_at DATETIME NOT NULL,
 		expires DATETIME NOT NULL
@@ -128,18 +149,22 @@ func (d *Database) Close() error {
 // CreateJSON inserts a new JSON entity
 func (d *Database) CreateJSON(json *models.JSON) error {
 	query := `
-	INSERT INTO json (id, json, content_type, created_at, modified_at, expires)
-	VALUES (?, ?, ?, ?, ?, ?)
+	INSERT INTO json (id, json, content_type, name, status, delay_ms, created_at, modified_at, expires)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query, json.ID, json.Content, json.ContentType, json.CreatedAt, json.ModifiedAt, json.Expires)
+	status := json.Status
+	if status == 0 {
+		status = 200
+	}
+	_, err := d.db.Exec(query, json.ID, json.Content, json.ContentType, json.Name, status, json.DelayMs, json.CreatedAt, json.ModifiedAt, json.Expires)
 	return err
 }
 
 // GetJSON retrieves a JSON entity by ID
 func (d *Database) GetJSON(id string) (*models.JSON, error) {
 	query := `
-	SELECT id, json, content_type, created_at, modified_at, expires
+	SELECT id, json, content_type, name, status, delay_ms, created_at, modified_at, expires
 	FROM json
 	WHERE id = ? AND expires > ?
 	`
@@ -149,6 +174,9 @@ func (d *Database) GetJSON(id string) (*models.JSON, error) {
 		&json.ID,
 		&json.Content,
 		&json.ContentType,
+		&json.Name,
+		&json.Status,
+		&json.DelayMs,
 		&json.CreatedAt,
 		&json.ModifiedAt,
 		&json.Expires,

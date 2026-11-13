@@ -13,6 +13,9 @@ type JSON struct {
 	ID          string    `json:"id" db:"id"`
 	Content     string    `json:"json" db:"json"`
 	ContentType string    `json:"contentType" db:"content_type"`
+	Name        string    `json:"name" db:"name"`
+	Status      int       `json:"status" db:"status"`
+	DelayMs     int       `json:"delay" db:"delay_ms"`
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	ModifiedAt  time.Time `json:"modifiedAt" db:"modified_at"`
 	Expires     time.Time `json:"expires" db:"expires"`
@@ -52,6 +55,7 @@ func NewJSON(content string) *JSON {
 		ID:          uuid.New().String(),
 		Content:     content,
 		ContentType: "application/json",
+		Status:      200,
 		CreatedAt:   now,
 		ModifiedAt:  now,
 		Expires:     now.AddDate(0, 0, 60), // Default 60 days

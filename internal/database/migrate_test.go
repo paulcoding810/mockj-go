@@ -145,4 +145,7 @@ func TestMigrateAddsContentTypeColumn(t *testing.T) {
 	if existing.ContentType != "application/json" {
 		t.Errorf("expected backfilled content_type application/json, got %q", existing.ContentType)
 	}
+	if existing.Name != "" || existing.Status != 200 || existing.DelayMs != 0 {
+		t.Errorf("expected backfilled name/status/delay defaults, got %q/%d/%d", existing.Name, existing.Status, existing.DelayMs)
+	}
 }

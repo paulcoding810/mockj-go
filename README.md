@@ -50,7 +50,7 @@ go build -o bin/server ./cmd/server
 
 Endpoints are **immutable**: you create one, then read it back until it expires. There are no update or delete operations.
 
-### Create JSON
+### Create an endpoint
 
 ```http
 POST /api/json
@@ -58,24 +58,42 @@ Content-Type: application/json
 
 {
   "json": "{\"name\": \"John\", \"age\": 30}",
+  "contentType": "application/json",
+  "name": "single user",
+  "status": 200,
+  "delay": 0,
   "expires": "2025-12-31T23:59:59Z"
 }
 ```
 
-`expires` is optional and must be between now and one year from now. When omitted, the endpoint defaults to 60 days. Request bodies are capped at 1 MiB.
+Only `json` is required. The request itself must be sent with `Content-Type: application/json`.
 
-### Get JSON (metadata + content)
+| Field | Default | Rules |
+| --- | --- | --- |
+| `json` | — | The content to serve, as a string. Must be valid JSON when `contentType` is `application/json`. |
+| `contentType` | `application/json` | One of `application/json`, `application/xml`, `text/xml`, `text/plain`, `text/csv`, `text/markdown`, `application/yaml`, `application/javascript`, `text/javascript`. HTML and SVG are rejected. |
+| `name` | `""` | Optional label, up to 100 characters. |
+| `status` | `200` | HTTP status the raw URL responds with, 200–599. Use it to mock errors. |
+| `delay` | `0` | Milliseconds to wait before responding, 0–10000. Use it to mock slow APIs. |
+| `expires` | 60 days | Must be between now and one year from now. |
+
+Request bodies are capped at 1 MiB.
+
+### Get endpoint metadata
+
+Returns the stored content plus its type, name, status, delay, and expiry. Use it to check when a shared URL expires.
 
 ```http
 GET /api/json/{id}
 ```
 
-### Get raw JSON content
+### Get raw content
 
-Returns just the stored content with `Content-Type: application/json` — this is the URL you point your app at.
+Returns just the stored content with its `Content-Type`, `status`, and `delay` applied — this is the URL you point your app at. Both paths are equivalent; `/raw/{id}` is the short form the web interface shares.
 
 ```http
-GET /api/json/{id}/content
+GET /raw/{id}
+GET /api/json/{id}/raw
 ```
 
 ### Health Check
@@ -93,6 +111,10 @@ GET /health
   "data": {
     "id": "uuid-string",
     "json": "{\"name\": \"John\"}",
+    "contentType": "application/json",
+    "name": "",
+    "status": 200,
+    "delay": 0,
     "createdAt": "2025-01-01T00:00:00Z",
     "modifiedAt": "2025-01-01T00:00:00Z",
     "expires": "2025-03-01T00:00:00Z"
@@ -198,15 +220,16 @@ The application includes a modern React frontend that makes it easy to create an
 1. Start the application: `docker-compose up -d`
 2. Open your browser and navigate to: `http://localhost:8080`
 3. Use the web interface to:
-   - Create JSON endpoints with the built-in editor
-   - View existing endpoints by ID
+   - Create endpoints with the built-in editor, choosing content type, response status, and delay
+   - Find past endpoints in Recent Endpoints by name or content preview
+   - Duplicate an endpoint to start a new version from it
    - Copy endpoint URLs easily
 
 ### Features
 
 - **JSON Editor** with syntax validation and formatting
 - **URL Sharing** with copy-to-clipboard functionality
-- **Recent Endpoints** stored locally for quick access
+- **Recent Endpoints** stored locally (up to 50) with names and previews; you're warned when an old one is dropped
 - **Responsive Design** that works on all devices
 - **Real-time Validation** of JSON content
 - **Toast Notifications** for user feedback
@@ -240,16 +263,24 @@ curl -X POST http://localhost:8080/api/json \
 curl http://localhost:8080/api/json/{your-uuid}
 ```
 
-#### Retrieve the raw JSON content
+#### Retrieve the raw content
 
 ```bash
-curl http://localhost:8080/api/json/{your-uuid}/content
+curl http://localhost:8080/raw/{your-uuid}
+```
+
+#### Mock a slow error response
+
+```bash
+curl -X POST http://localhost:8080/api/json \
+  -H "Content-Type: application/json" \
+  -d '{"json": "{\"error\": \"boom\"}", "status": 500, "delay": 2000}'
 ```
 
 ## Design Notes
 
 - **Immutable & ephemeral**: Endpoints cannot be edited or deleted through the API. Each one carries an expiry (default 60 days, max 1 year) and is removed automatically by a background cleanup routine once expired.
-- **Raw content safety**: The `/content` endpoint sends `X-Content-Type-Options: nosniff` so stored content cannot be MIME-sniffed and executed as HTML by a browser.
+- **Raw content safety**: Raw URLs send `X-Content-Type-Options: nosniff` and a sandboxing `Content-Security-Policy`, so stored content cannot run scripts as a page in this origin. JavaScript content is still served with its executable type so it can be loaded via `<script src>`.
 - **Rate limiting**: A per-client fixed-window limiter guards the API; its state is concurrency-safe and bounded so it cannot leak memory under load.
 
 ## Comparison with Original MockJ

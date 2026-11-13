@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"mockj-go/internal/database"
 )
@@ -123,7 +125,7 @@ func TestJSONHandler(t *testing.T) {
 
 		// Found: writes the raw content verbatim with a nosniff header.
 		w = httptest.NewRecorder()
-		if ok := handler.ServeContentByID(w, id); !ok {
+		if ok := handler.ServeContentByID(w, httptest.NewRequest("GET", "/", nil), id); !ok {
 			t.Fatalf("Expected ServeContentByID to find id %s", id)
 		}
 		if w.Body.String() != content {
@@ -138,7 +140,7 @@ func TestJSONHandler(t *testing.T) {
 
 		// Missing: returns false and writes nothing.
 		w = httptest.NewRecorder()
-		if ok := handler.ServeContentByID(w, "does-not-exist"); ok {
+		if ok := handler.ServeContentByID(w, httptest.NewRequest("GET", "/", nil), "does-not-exist"); ok {
 			t.Errorf("Expected ServeContentByID to report not found")
 		}
 		if w.Body.Len() != 0 {
@@ -180,7 +182,7 @@ func TestJSONHandler(t *testing.T) {
 		id := createResponse["data"].(map[string]interface{})["id"].(string)
 
 		w = httptest.NewRecorder()
-		if ok := handler.ServeContentByID(w, id); !ok {
+		if ok := handler.ServeContentByID(w, httptest.NewRequest("GET", "/", nil), id); !ok {
 			t.Fatalf("Expected ServeContentByID to find id %s", id)
 		}
 		if w.Body.String() != content {
@@ -224,7 +226,7 @@ func TestJSONHandler(t *testing.T) {
 		}
 
 		w = httptest.NewRecorder()
-		if ok := handler.ServeContentByID(w, data["id"].(string)); !ok {
+		if ok := handler.ServeContentByID(w, httptest.NewRequest("GET", "/", nil), data["id"].(string)); !ok {
 			t.Fatalf("Expected ServeContentByID to find created id")
 		}
 		if w.Body.String() != content {
@@ -304,11 +306,90 @@ func TestJSONHandler(t *testing.T) {
 		}
 
 		w = httptest.NewRecorder()
-		if ok := handler.ServeContentByID(w, data["id"].(string)); !ok {
+		if ok := handler.ServeContentByID(w, httptest.NewRequest("GET", "/", nil), data["id"].(string)); !ok {
 			t.Fatalf("Expected ServeContentByID to find created id")
 		}
 		if w.Header().Get("Content-Type") != "application/json" {
 			t.Errorf("Expected Content-Type: application/json, got %q", w.Header().Get("Content-Type"))
+		}
+	})
+}
+
+func createForTest(t *testing.T, handler *JSONHandler, reqBody map[string]interface{}) (*httptest.ResponseRecorder, map[string]interface{}) {
+	t.Helper()
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("POST", "/api/json", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.CreateJSON(w, req)
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	data, _ := resp["data"].(map[string]interface{})
+	return w, data
+}
+
+func TestMockOptions(t *testing.T) {
+	db, err := database.NewDatabase(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+	defer db.Close()
+	handler := NewJSONHandler(db)
+
+	t.Run("NameStatusDelayAreStoredAndServed", func(t *testing.T) {
+		w, data := createForTest(t, handler, map[string]interface{}{
+			"json":   `{"error":"boom"}`,
+			"name":   "  error case  ",
+			"status": 503,
+			"delay":  50,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("Expected 201, got %d: %s", w.Code, w.Body.String())
+		}
+		if data["name"] != "error case" || data["status"] != float64(503) || data["delay"] != float64(50) {
+			t.Errorf("Unexpected stored options: %v", data)
+		}
+
+		rw := httptest.NewRecorder()
+		start := time.Now()
+		handler.ServeContentByID(rw, httptest.NewRequest("GET", "/", nil), data["id"].(string))
+		if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
+			t.Errorf("Expected at least 50ms delay, got %v", elapsed)
+		}
+		if rw.Code != 503 {
+			t.Errorf("Expected status 503, got %d", rw.Code)
+		}
+		if rw.Body.String() != `{"error":"boom"}` {
+			t.Errorf("Unexpected body %q", rw.Body.String())
+		}
+	})
+
+	t.Run("DefaultsToStatus200", func(t *testing.T) {
+		_, data := createForTest(t, handler, map[string]interface{}{"json": `{}`})
+		if data["status"] != float64(200) || data["delay"] != float64(0) || data["name"] != "" {
+			t.Errorf("Unexpected defaults: %v", data)
+		}
+	})
+
+	t.Run("RejectsInvalidOptions", func(t *testing.T) {
+		for _, tc := range []map[string]interface{}{
+			{"json": `{}`, "status": 199},
+			{"json": `{}`, "status": 600},
+			{"json": `{}`, "delay": -1},
+			{"json": `{}`, "delay": 10001},
+			{"json": `{}`, "name": strings.Repeat("x", 101)},
+			{"json": `{not json`},
+			{"json": `{not json`, "contentType": "application/json"},
+		} {
+			if w, _ := createForTest(t, handler, tc); w.Code != http.StatusBadRequest {
+				t.Errorf("%v: expected 400, got %d", tc, w.Code)
+			}
+		}
+	})
+
+	t.Run("NonJSONTypesSkipJSONValidation", func(t *testing.T) {
+		if w, _ := createForTest(t, handler, map[string]interface{}{"json": "{not json", "contentType": "text/plain"}); w.Code != http.StatusCreated {
+			t.Errorf("Expected 201, got %d", w.Code)
 		}
 	})
 }

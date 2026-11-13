@@ -35,6 +35,7 @@ class MockJGoClient {
     jsonContent,
     expiresInHours = 720,
     contentType = "application/json",
+    { name = "", status = 200, delay = 0 } = {},
   ) {
     const expires = new Date();
     expires.setHours(expires.getHours() + parseInt(expiresInHours));
@@ -44,6 +45,9 @@ class MockJGoClient {
       body: JSON.stringify({
         json: jsonContent,
         contentType,
+        name,
+        status,
+        delay,
         expires: expires.toISOString(),
       }),
     });

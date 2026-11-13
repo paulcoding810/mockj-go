@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"mockj-go/internal/database"
 	"mockj-go/internal/models"
@@ -15,6 +16,11 @@ import (
 const maxBodyBytes = 1 << 20
 
 const defaultContentType = "application/json"
+
+const (
+	maxNameLength = 100
+	maxDelayMs    = 10000
+)
 
 // allowedContentTypes maps an accepted request content type to the Content-Type
 // used when serving it back from /raw/{id}. text/html and image/svg+xml are
@@ -29,7 +35,7 @@ var allowedContentTypes = map[string]string{
 	"text/plain":             "text/plain",
 	"text/csv":               "text/csv",
 	"text/markdown":          "text/markdown",
-	"application/yaml":        "application/yaml",
+	"application/yaml":       "application/yaml",
 	"application/javascript": "application/javascript",
 	"text/javascript":        "text/javascript",
 }
@@ -46,6 +52,9 @@ func NewJSONHandler(db *database.Database) *JSONHandler {
 type CreateJSONRequest struct {
 	Content     string     `json:"json"`
 	ContentType string     `json:"contentType,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Status      int        `json:"status,omitempty"`
+	DelayMs     int        `json:"delay,omitempty"`
 	Expires     *time.Time `json:"expires,omitempty"`
 }
 
@@ -83,6 +92,31 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if contentType == defaultContentType && !json.Valid([]byte(req.Content)) {
+		h.writeError(w, http.StatusBadRequest, "invalid_json", "Content is not valid JSON")
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if utf8.RuneCountInString(name) > maxNameLength {
+		h.writeError(w, http.StatusBadRequest, "invalid_name", "Name must be at most 100 characters")
+		return
+	}
+
+	status := req.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+	if status < 200 || status > 599 {
+		h.writeError(w, http.StatusBadRequest, "invalid_status", "Status must be between 200 and 599")
+		return
+	}
+
+	if req.DelayMs < 0 || req.DelayMs > maxDelayMs {
+		h.writeError(w, http.StatusBadRequest, "invalid_delay", "Delay must be between 0 and 10000 ms")
+		return
+	}
+
 	if req.Expires != nil && req.Expires.Before(time.Now()) {
 		h.writeError(w, http.StatusBadRequest, "invalid_expires", "Expiration time must be in the future")
 		return
@@ -95,6 +129,9 @@ func (h *JSONHandler) CreateJSON(w http.ResponseWriter, r *http.Request) {
 
 	jsonModel := models.NewJSON(req.Content)
 	jsonModel.ContentType = contentType
+	jsonModel.Name = name
+	jsonModel.Status = status
+	jsonModel.DelayMs = req.DelayMs
 	if req.Expires != nil {
 		jsonModel.Expires = *req.Expires
 	}
@@ -137,7 +174,7 @@ func (h *JSONHandler) GetJSON(w http.ResponseWriter, r *http.Request) {
 // machine-facing, with a 404 when the endpoint doesn't exist or has expired.
 func (h *JSONHandler) GetRawContent(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if !h.ServeContentByID(w, id) {
+	if !h.ServeContentByID(w, r, id) {
 		h.writeError(w, http.StatusNotFound, "not_found", "JSON not found or expired")
 	}
 }
@@ -146,9 +183,10 @@ func (h *JSONHandler) GetRawContent(w http.ResponseWriter, r *http.Request) {
 // was found. It powers the machine-facing /raw/{id} URL.
 //
 // nosniff prevents MIME-sniffing; the sandbox CSP stops renderable types (XML/XHTML)
-// from running scripts in our origin. Returns false (writing nothing) when the
+// from running scripts in our origin. The stored delay and status are applied
+// before writing. Returns false (writing nothing) when the
 // id doesn't resolve to a live endpoint, so the caller can send a 404.
-func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
+func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, r *http.Request, id string) bool {
 	jsonModel, err := h.db.GetJSON(id)
 	if err != nil {
 		return false
@@ -162,6 +200,20 @@ func (h *JSONHandler) ServeContentByID(w http.ResponseWriter, id string) bool {
 	w.Header().Set("Content-Type", served)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
+
+	if jsonModel.DelayMs > 0 {
+		select {
+		case <-time.After(time.Duration(jsonModel.DelayMs) * time.Millisecond):
+		case <-r.Context().Done():
+			return true
+		}
+	}
+
+	status := jsonModel.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+	w.WriteHeader(status)
 	_, _ = w.Write([]byte(jsonModel.Content))
 	return true
 }

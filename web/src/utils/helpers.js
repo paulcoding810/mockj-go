@@ -82,7 +82,7 @@ export const ClipboardHelper = {
 // Local storage utilities for recent endpoints
 export const StorageHelper = {
   RECENT_ENDPOINTS_KEY: "mockj-recent-endpoints",
-  MAX_RECENT_ITEMS: 10,
+  MAX_RECENT_ITEMS: 50,
 
   getRecentEndpoints() {
     try {
@@ -94,28 +94,28 @@ export const StorageHelper = {
     }
   },
 
+  // Returns the saved list and any older entries dropped to fit the cap or storage quota.
   saveRecentEndpoint(endpoint) {
-    try {
-      const recents = this.getRecentEndpoints();
+    const recents = this.getRecentEndpoints().filter(
+      (item) => item.id !== endpoint.id,
+    );
+    let kept = [endpoint, ...recents];
+    const dropped = kept.slice(this.MAX_RECENT_ITEMS);
+    kept = kept.slice(0, this.MAX_RECENT_ITEMS);
 
-      // Remove existing item with same ID if it exists
-      const filteredRecents = recents.filter((item) => item.id !== endpoint.id);
-
-      // Add new item at the beginning
-      const updatedRecents = [endpoint, ...filteredRecents];
-
-      // Keep only the most recent items
-      const limitedRecents = updatedRecents.slice(0, this.MAX_RECENT_ITEMS);
-
-      localStorage.setItem(
-        this.RECENT_ENDPOINTS_KEY,
-        JSON.stringify(limitedRecents),
-      );
-      return limitedRecents;
-    } catch (error) {
-      console.error("Error saving recent endpoint:", error);
-      return [];
+    while (kept.length > 0) {
+      try {
+        localStorage.setItem(this.RECENT_ENDPOINTS_KEY, JSON.stringify(kept));
+        return { recents: kept, dropped };
+      } catch (error) {
+        if (kept.length === 1) {
+          console.error("Error saving recent endpoint:", error);
+          break;
+        }
+        dropped.unshift(kept.pop());
+      }
     }
+    return { recents: [], dropped };
   },
 
   cleanupExpiredEndpoints() {

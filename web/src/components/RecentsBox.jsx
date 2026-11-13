@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Grid,
@@ -21,6 +22,7 @@ import {
   Launch,
   ClearAll,
   Refresh,
+  FileCopy,
 } from "@mui/icons-material";
 import {
   StorageHelper,
@@ -28,7 +30,13 @@ import {
   ClipboardHelper,
 } from "../utils/helpers.js";
 
+const PREVIEW_CHARS = 160;
+
+const preview = (content = "") =>
+  content.length > PREVIEW_CHARS ? `${content.slice(0, PREVIEW_CHARS)}…` : content;
+
 const RecentsBox = ({ addToast }) => {
+  const navigate = useNavigate();
   const [recentEndpoints, setRecentEndpoints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -171,13 +179,23 @@ const RecentsBox = ({ addToast }) => {
                   alignItems="flex-start"
                   mb={2}
                 >
-                  <Typography
-                    variant="h6"
-                    component="h2"
-                    sx={{ wordBreak: "break-all" }}
-                  >
-                    {endpoint.id}
-                  </Typography>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      variant="h6"
+                      component="h2"
+                      sx={{ wordBreak: "break-word" }}
+                      color={endpoint.name ? "text.primary" : "text.secondary"}
+                    >
+                      {endpoint.name || "Untitled"}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ wordBreak: "break-all" }}
+                    >
+                      {endpoint.id}
+                    </Typography>
+                  </Box>
                   <IconButton
                     size="small"
                     onClick={() => handleDelete(endpoint.id)}
@@ -194,6 +212,15 @@ const RecentsBox = ({ addToast }) => {
                     variant="outlined"
                     sx={{ mb: 1, display: "block" }}
                   />
+                  {(endpoint.status && endpoint.status !== 200) || endpoint.delay ? (
+                    <Chip
+                      label={`${endpoint.status || 200}${endpoint.delay ? ` · ${endpoint.delay} ms delay` : ""}`}
+                      size="small"
+                      color={endpoint.status >= 400 ? "warning" : "default"}
+                      variant="outlined"
+                      sx={{ mb: 1, display: "block" }}
+                    />
+                  ) : null}
                   <Chip
                     label={`Created: ${DateHelper.formatRelative(endpoint.createdAt)}`}
                     size="small"
@@ -216,6 +243,29 @@ const RecentsBox = ({ addToast }) => {
                     />
                   )}
                 </Box>
+
+                {endpoint.json && (
+                  <Box
+                    component="pre"
+                    sx={{
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      maxHeight: 96,
+                      overflow: "hidden",
+                      backgroundColor: "grey.50",
+                      border: 1,
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      p: 1,
+                      m: 0,
+                      mb: 2,
+                    }}
+                  >
+                    {preview(endpoint.json)}
+                  </Box>
+                )}
 
                 <Box>
                   <Box display="flex" alignItems="center" mb={1}>
@@ -265,6 +315,15 @@ const RecentsBox = ({ addToast }) => {
                   fullWidth
                 >
                   Open Content
+                </Button>
+                <Button
+                  size="small"
+                  startIcon={<FileCopy />}
+                  onClick={() => navigate("/", { state: { from: endpoint } })}
+                  variant="outlined"
+                  fullWidth
+                >
+                  Duplicate
                 </Button>
               </CardActions>
             </Card>
